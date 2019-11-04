@@ -1,5 +1,9 @@
-class("autoExpenser::main","widget")
+class("autoexpenser::main","widget")
 {
+	function saveSettings(save Settings to disk)
+	{
+	}
+	
 	function constructor(runs when autoExpenser::main object is created)
 	{
 		/* autoExpenser::main::constructor
@@ -24,7 +28,6 @@ class("autoExpenser::main","widget")
 		
 		@%l0 = $new(layout, $$, "@%a{pnd} | main | layout 0")
 		@%l0->$setSpacing(20)
-		@%l0->$setAlignment(@%lblTitleLocal, Top)
 		
 		// create tabWidget
 		@%tabwTabs = $new(tabWidget, $$, "@%a{pnd}|main|tabwidget")
@@ -33,14 +36,16 @@ class("autoExpenser::main","widget")
 		@%l0->$addMultiCellWidget(@%tabwTabs, 1,1,0,0)
 		
 		// create tab 'pages'
-		@%wgtPageSettings = $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|Settings") 
+		@%wgtPageSettings = $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|Settings")
+		@%wgtPageBankData = $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|BankData")
 		
 		// create 'page' layout
 		@%lPageSettings = $new(layout, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Layout")
-		
+		@%lPageBankData = $new(layout, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Layout")
 		
 		// create 'page' child widgets
 		
+		### Settings tab
 			// Local
 		@%lblSettingsTitleLocal = $new(label, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Label|TitleLocal")
 		@%lblSettingsTitleLocal->$setText("<b>Local</b>")
@@ -84,6 +89,7 @@ class("autoExpenser::main","widget")
 		@%leRemoteDBTable = $new(lineedit, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Line Edit|remoteDBTable")
 		@%leRemoteDBTable->$setMinimumWidth(50)
 		
+			// page layout settings
 		
 		@%lPageSettings->$addMultiCellWidget(@%lblSettingsTitleLocal,		0,0,0,2)
 		@%lPageSettings->$addMultiCellWidget(@%lblLocalDatabase,			1,1,0,0)
@@ -107,9 +113,49 @@ class("autoExpenser::main","widget")
 		@%lPageSettings->$setColumnStretch(1, 2)
 		@%lPageSettings->$setColumnStretch(2, 0)
 		
+		@%lPageSettings->$setAlignment(@%lblSettingsTitleLocal,	Bottom)
+		@%lPageSettings->$setAlignment(@%lblSettingsTitleRemote,	Bottom)
+		
+		### Bank data tab
+		
+		@%lblBankDataFile = $new(label, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Label|BankDataFile")
+		@%lblBankDataFile->$setText("Bank Data File: ")
+		
+		@%leBankDataFile = $new(lineedit, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Line Edit|BankDataFile")
+		@%leBankDataFile->$setMinimumWidth(50)
+		
+		@%btnBankDataFile = $new(button, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Button|BankDataFile")
+		@%btnBankDataFile->$setText("Browse")
+		
+		@%lblBankDataSepType = $new(label, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Label|BankDataSepType")
+		@%lblBankDataSepType->$setText("Seperator: ")
+		@%coboBankDataSepType = $new(combobox, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|ComboBox|BankDataSepType")
+		@%coboBankDataSepType->$insertItem("Comma")
+		@%coboBankDataSepType->$insertItem("Pipe")
+		@%coboBankDataSepType->$insertItem("Tab")
+		
+		@%cbBankDataFirstLine = $new(checkbox, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|CheckBox|BankDataFirstline")
+		@%cbBankDataFirstLine->$setText("First line has column titles")
+		
+		@%btnBankDataLoad = $new(button, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Button|BankDataLoad")
+		@%btnBankDataLoad->$setText("Load Data")
+		
+		@%bdtBankDataTable = $new(autoexpenser::bankdatatable, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|BankDataTable")
+		
+			// page layout settings
+		
+		@%lPageBankData->$addMultiCellWidget(@%lblBankDataFile,		0,0,0,0)
+		@%lPageBankData->$addMultiCellWidget(@%leBankDataFile,		0,0,1,1)
+		@%lPageBankData->$addMultiCellWidget(@%btnBankDataFile,		0,0,2,2)
+		@%lPageBankData->$addMultiCellWidget(@%lblBankDataSepType,		1,1,0,0)
+		@%lPageBankData->$addMultiCellWidget(@%coboBankDataSepType,	1,1,1,2)
+		@%lPageBankData->$addMultiCellWidget(@%cbBankDataFirstLine,	2,2,0,2)
+		@%lPageBankData->$addMultiCellWidget(@%btnBankDataLoad,		3,3,0,2)
+		@%lPageBankData->$addMultiCellWidget(@%bdtBankDataTable,		4,6,0,2)
+		
 		// add 'pages' to tabwidget
 		@%tabwTabs->$addTab(@%wgtPageSettings, "Settings")
-		
+		@%tabwTabs->$addTab(@%wgtPageBankData, "Bank Data")
 		
 		### main run
 		@$show()
@@ -117,7 +163,23 @@ class("autoExpenser::main","widget")
 	
 }
 
-class("autoExpenser::common","object")
+class("autoexpenser::common","object")
 {
+}
+
+class("autoexpenser::bankdatatable","tablewidget")
+{
+	function constructor(runs when the bankdatatable object is created)
+	{
+		/* autoexpenser::bankdatatable
+		
+		*/
+		
+		@%columnTitles = $array()
+		
+		@$setColumnCount(@%columnTitles[]#)
+		@$setHorizontalHeaderLabels(@%columnTitles)
+	}
+	
 }
 
