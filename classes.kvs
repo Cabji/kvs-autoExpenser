@@ -1,7 +1,80 @@
 class("autoexpenser::main","widget")
 {
-	function saveSettings(save Settings to disk)
+	function settingsSaveToDisk(saves the settings hash to disk)
 	{
+		/* autoexpenser::main::settingsSaveToDisk
+			
+			this function saves the settings hash to disk.
+		
+			$0 will contain an integer if the @$signalName is currentChanged (Tab was changed by the user)
+			
+			@$parent->%intPrevTab contains the tab value prior to this signal being emitted, so it must be updated at the end of this slot code.
+			we will use @%intPrevTab to determine which tab we just came from so we can decide what we should do in here.
+		
+			TABS
+			0 = Settings
+			1 = Bank Data
+		
+		*/
+		
+		%intNewTab = $0
+		if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
+		
+		switch (@%intPrevTab)
+		{
+			case ("0"):
+			{
+				# save the settings hash to disk
+				%cfg = $config.open(@%s{settingsFile}, rw)
+				if (%cfg)
+				{
+					config.clearsection %cfg settings
+					config.setsection %cfg settings
+					foreach (%key, $keys(@%s))
+					{
+						config.write %cfg %key @%s{%key}
+					}
+					config.close %cfg
+				}
+				else
+				{
+					dialog.message -b ("Warning", "Could not open the settings file to save settings to disk.<br/>This is most likely a bug and should be reported to the software developer.", $icon("warning"), "/okay...")
+					{}
+				}
+				@%intPrevTab = %intNewTab
+				break;
+			}
+			case ("1"):
+			{
+				@%intPrevTab = %intNewTab
+				break;
+			}
+			default:
+			{
+				if (@%debug) {debug -c we don't know which tab we came from. the value we found was: %intPrevTab;}
+			}
+		}
+	}
+	
+	function settingsCatchChanges(catch setting changes and reflect them into the settings hash)
+	{
+		/* autoexpenser::main::settingsCatchChanges
+		
+			this function is a slot for the widgets in the Settings tab, for when their values change.
+			the purpose of this function is to catch the changed value and put it into the @%s (settings hash)
+			once the user moves focus from the settings tab, all the settings will be saved to disk
+		
+		*/
+		
+		#debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()
+		
+		%signalSenderName = @$signalSender()->$name()
+		
+		%senderHier = $str.split("|",%signalSenderName)
+		
+		%settingName = %senderHier[$(%senderHier[]# - 1)]
+		
+		@%s{%settingName} = $0
 	}
 	
 	function constructor(runs when autoExpenser::main object is created)
@@ -12,13 +85,33 @@ class("autoexpenser::main","widget")
 		
 		### settings
 		
+		@%s{osDirSlash}		= "\\"
 		@%s{programName}	= "Auto Expenser"
 		@%s{programNameDev}	= "autoExpenser"
 		@%s{programVersion}	= "v 0.1"
+		@%s{settingsFile}	= $file.fixpath($file.homedir()".autoExpenser/settings.conf")
 		
 		### variable aliases - these are shortened version of some variable names above to make it easier for development
 		
-		@%a{pnd} = @%s{programNameDev}
+		@%a{pnd} 			= @%s{programNameDev}
+		
+		### class variables
+		
+		@%debug 			= $true
+		@%intPrevTab		= 0
+		
+		### start up checks
+		
+		if ($file.exists(@%s{settingsFile}) == $false)
+		{
+			debug -c settingsFile does not exist
+			if ($file.exists($str.lefttolast(@%s{settingsFile}, @%s{osDirSlash})) == $false)
+			{
+				debug -c program user directory does not exist, attempting to create it
+				debug -c we are making: $str.lefttolast(@%s{settingsFile}, @%s{osDirSlash})
+				file.mkdir $str.lefttolast(@%s{settingsFile}, @%s{osDirSlash})
+			}
+		}
 		
 		### widgets
 		
@@ -157,8 +250,64 @@ class("autoexpenser::main","widget")
 		@%tabwTabs->$addTab(@%wgtPageSettings, "Settings")
 		@%tabwTabs->$addTab(@%wgtPageBankData, "Bank Data")
 		
+		### objects connect
+		
+		objects.connect @%btnBankDataFile clicked $$ browseButtonClicked
+		objects.connect @%leLocalDatabase textChanged $$ settingsCatchChanges
+		objects.connect @%tabwTabs currentChanged $$ settingsSaveToDisk
+		
 		### main run
 		@$show()
+	}
+	
+	function browseButtonClicked(handles a browse button that is used to look for a file)
+	{
+		/* autoexpenser::main::browseButtonClicked
+		
+			This function is a slot to handle when a "Browse" button is clicked when the user wants to search for a file.
+		*/
+		
+		if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
+		
+		debug -c $b()Is this the name of the app var? @$className()
+		
+		dialog.file -b ("Open", "Open File...",,, @$signalSender()->$name())
+		{
+			// dev-note:	$0 contains the absolute path to the chosen file. if the user cancels, $0 will be null
+			//			$1 will contain the signalSender name, so we can determine what we should do with $0 if it exists
+			debug -c \n0 = $0\n1 = $1
+			if ($0)
+			{
+				if ($1)
+				{
+					%signalSender = $1
+					if ($system.osname == "Windows") {%dirSep = "\\";} else {%dirSep = "/";}
+					%senderHier = $str.split("|",%signalSender)
+					%widgetName = %senderHier[$(%senderHier[]# - 1)];
+					switch (%widgetName)
+					{
+						case ("BankDataFile"):
+						{
+							debug -c %widgetName called for this file.
+							break;
+						}
+						default:
+						{
+							debug -c the widget that requested this file is not known in this area of the code.\n This is probably a bug and should be reported to the software developer.\n$b()widgetName = %widgetName$b()\n$b()signalSender = %signalSender$b()
+						}
+					}
+				}
+				else
+				{
+					debug -c arg 1 was empty. this is a problem because we don't know which widget asked for the file. this is a bug, you should report it to the software developer.
+				}
+			}
+			else
+			{
+				debug -c no filename was returned, user must have cancelled the selection. if you see this, it means the developer forgot to comment this line!
+			}
+		
+		}
 	}
 	
 }
