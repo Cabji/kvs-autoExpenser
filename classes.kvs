@@ -1,0 +1,123 @@
+class("autoExpenser::main","widget")
+{
+	function constructor(runs when autoExpenser::main object is created)
+	{
+		/* autoExpenser::main::constructor
+			
+		*/
+		
+		### settings
+		
+		@%s{programName}	= "Auto Expenser"
+		@%s{programNameDev}	= "autoExpenser"
+		@%s{programVersion}	= "v 0.1"
+		
+		### variable aliases - these are shortened version of some variable names above to make it easier for development
+		
+		@%a{pnd} = @%s{programNameDev}
+		
+		### widgets
+		
+		@$setWindowTitle(@%s{programName} @%s{programVersion})
+		@$setGeometry(0,0,560,300)
+		@$centerToScreen()
+		
+		@%l0 = $new(layout, $$, "@%a{pnd} | main | layout 0")
+		@%l0->$setSpacing(20)
+		@%l0->$setAlignment(@%lblTitleLocal, Top)
+		
+		// create tabWidget
+		@%tabwTabs = $new(tabWidget, $$, "@%a{pnd}|main|tabwidget")
+		
+		// add the tabwidget to the layout of the main window widget
+		@%l0->$addMultiCellWidget(@%tabwTabs, 1,1,0,0)
+		
+		// create tab 'pages'
+		@%wgtPageSettings = $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|Settings") 
+		
+		// create 'page' layout
+		@%lPageSettings = $new(layout, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Layout")
+		
+		
+		// create 'page' child widgets
+		
+			// Local
+		@%lblSettingsTitleLocal = $new(label, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Label|TitleLocal")
+		@%lblSettingsTitleLocal->$setText("<b>Local</b>")
+		
+		@%lblLocalDatabase = $new(label, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Label|localDatabase")
+		@%lblLocalDatabase->$setText("Database Location: ")
+		
+		@%leLocalDatabase = $new(lineedit, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Line Edit|localDatabase")
+		@%leLocalDatabase->$setMinimumWidth(50)
+		
+		@%btnLocalDatabase = $new(button, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Button|localDatabase")
+		@%btnLocalDatabase->$setText("Browse")
+		
+			// Remote
+		@%lblSettingsTitleRemote = $new(label, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Label|TitleRemote")
+		@%lblSettingsTitleRemote->$setText("<b>Remote</b>")
+		
+		@%lblRemoteDBHost = $new(label, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Label|remoteDBHost")
+		@%lblRemoteDBHost->$setText("Database Host: ")
+		@%leRemoteDBHost = $new(lineedit, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Line Edit|remoteDBHost")
+		@%leRemoteDBHost->$setMinimumWidth(50)
+		
+		@%lblRemoteDBUser = $new(label, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Label|remoteDBUser")
+		@%lblRemoteDBUser->$setText("Database User: ")
+		@%leRemoteDBUser = $new(lineedit, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Line Edit|remoteDBUser")
+		@%leRemoteDBUser->$setMinimumWidth(50)
+		
+		@%lblRemoteDBPass = $new(label, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Label|remoteDBPass")
+		@%lblRemoteDBPass->$setText("Database Password: ")
+		@%leRemoteDBPass = $new(lineedit, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Line Edit|remoteDBPass")
+		@%leRemoteDBPass->$setMinimumWidth(50)
+		@%leRemoteDBPass->$setEchoMode(Password)
+		
+		@%lblRemoteDBName = $new(label, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Label|remoteDBName")
+		@%lblRemoteDBName->$setText("Database Name: ")
+		@%leRemoteDBName = $new(lineedit, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Line Edit|remoteDBName")
+		@%leRemoteDBName->$setMinimumWidth(50)
+		
+		@%lblRemoteDBTable = $new(label, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Label|remoteDBTable")
+		@%lblRemoteDBTable->$setText("Table Name: ")
+		@%leRemoteDBTable = $new(lineedit, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Line Edit|remoteDBTable")
+		@%leRemoteDBTable->$setMinimumWidth(50)
+		
+		
+		@%lPageSettings->$addMultiCellWidget(@%lblSettingsTitleLocal,		0,0,0,2)
+		@%lPageSettings->$addMultiCellWidget(@%lblLocalDatabase,			1,1,0,0)
+		@%lPageSettings->$addMultiCellWidget(@%leLocalDatabase,			1,1,1,1)
+		@%lPageSettings->$addMultiCellWidget(@%btnLocalDatabase,			1,1,2,2)
+		@%lPageSettings->$addMultiCellWidget(@%lblSettingsTitleRemote,		2,2,0,2)
+		@%lPageSettings->$addMultiCellWidget(@%lblRemoteDBHost,			3,3,0,0)
+		@%lPageSettings->$addMultiCellWidget(@%leRemoteDBHost,			3,3,1,1)
+		@%lPageSettings->$addMultiCellWidget(@%lblRemoteDBUser,			4,4,0,0)
+		@%lPageSettings->$addMultiCellWidget(@%leRemoteDBUser,			4,4,1,1)
+		@%lPageSettings->$addMultiCellWidget(@%lblRemoteDBPass,			5,5,0,0)
+		@%lPageSettings->$addMultiCellWidget(@%leRemoteDBPass,			5,5,1,1)
+		@%lPageSettings->$addMultiCellWidget(@%lblRemoteDBName,			6,6,0,0)
+		@%lPageSettings->$addMultiCellWidget(@%leRemoteDBName,			6,6,1,1)
+		@%lPageSettings->$addMultiCellWidget(@%lblRemoteDBTable,			7,7,0,0)
+		@%lPageSettings->$addMultiCellWidget(@%leRemoteDBTable,			7,7,1,1)
+		
+		@%lPageSettings->$setRowStretch(0, 0)
+		@%lPageSettings->$setRowStretch(1, 1)
+		@%lPageSettings->$setColumnStretch(0, 1)
+		@%lPageSettings->$setColumnStretch(1, 2)
+		@%lPageSettings->$setColumnStretch(2, 0)
+		
+		// add 'pages' to tabwidget
+		@%tabwTabs->$addTab(@%wgtPageSettings, "Settings")
+		
+		
+		### main run
+		@$show()
+	}
+	
+}
+
+class("autoExpenser::common","object")
+{
+}
+
