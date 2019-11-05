@@ -23,6 +23,11 @@ class("autoexpenser::main","widget")
 					@%leBankDataFile->$setCursorPosition(0)
 					break;
 				}
+				case ("localDatabase"):
+				{
+					@%leLocalDatabase->$setText(%fileName)
+					@%leLocalDatabase->$setCursorPosition(0)
+				}
 				default:
 				{
 					if (@%debug) {debug -c "The object that sent this signal is not known. @%s{msgDebugProb}";}
@@ -32,6 +37,39 @@ class("autoexpenser::main","widget")
 		else
 		{
 			debug -c "Argument 0 was null. @%s{msgDebugProb}"
+		}
+	}
+	
+	function slotButtonClicked(this function handles button clicks)
+	{
+		/* autoexpenser::main::slotButtonClicked
+		
+			This function handles generic button clicks in the app
+		*/
+		
+		%senderName = @$signalSender()->$name()
+		%senderHier = $str.split("|",%senderName)
+		%senderObject = %senderHier[$(%senderHier[]# - 1)]
+		
+		switch (%senderObject)
+		{
+			case ("BankDataLoad"):
+			{
+				debug -c Load Bank Data button clicked;
+				if (@%leBankDataFile->$text())
+				{
+				}
+				else
+				{
+					dialog.message -b ("Notice", "No bank data file found.<br/><br/>Select a data file by click the Browse button on the Bank Data tab's page.", $icon(info), "/okay...")
+					{}
+				}
+				break;
+			}
+			default:
+			{
+				if (@%debug) {debug -c The object that was clicked is not handled in the code. @%s{msgDebugProb};}
+			}
 		}
 	}
 	
@@ -290,10 +328,16 @@ class("autoexpenser::main","widget")
 		
 		### objects connect
 		
-		objects.connect @%btnBankDataFile clicked $$ browseButtonClicked
-		objects.connect @%btnBankDataFile signalDialogFile $$ slotDialogFile
-		objects.connect @%leLocalDatabase textChanged $$ settingsCatchChanges
-		objects.connect @%tabwTabs currentChanged $$ settingsSaveToDisk
+		objects.connect @%btnBankDataFile clicked			$$ browseButtonClicked
+		objects.connect @%btnBankDataFile signalDialogFile	$$ slotDialogFile
+		
+		objects.connect @%btnBankDataLoad clicked			$$ slotButtonClicked
+		
+		objects.connect @%btnLocalDatabase clicked			$$ browseButtonClicked
+		objects.connect @%btnLocalDatabase signalDialogFile	$$ slotDialogFile
+		
+		objects.connect @%leLocalDatabase textChanged		$$ settingsCatchChanges
+		objects.connect @%tabwTabs currentChanged			$$ settingsSaveToDisk
 		
 		### main run
 		@$show()
@@ -323,12 +367,12 @@ class("autoexpenser::main","widget")
 				}
 				else
 				{
-					debug -c "Argument 1 was null. This is a problem because we don't know which widget asked for the file. $3"
+					debug -c "Argument 1 (signalSender) was null. This is a problem because we don't know which widget asked for the file. $3"
 				}
 			}
 			else
 			{
-				debug -c "No filename was returned, user must have cancelled the selection. $2"
+				debug -c "Argument 0 (filename) was null. User must have cancelled the selection. $2"
 			}
 		
 		}
