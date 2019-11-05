@@ -1,5 +1,40 @@
 class("autoexpenser::main","widget")
 {
+	function slotDialogFile(this function catches the signalDialogFile thrown by any object)
+	{
+		/* autoexpenser::main::slotDialogFile
+		
+			This function catches when an object sends a signalDialogFile signal.
+		
+		*/
+		
+		if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
+		
+		if ($0)
+		{
+			%fileName = $0
+			%senderHier = $str.split("|",@$signalSender->$name())
+			%senderObject = %senderHier[$(%senderHier[]# - 1)]
+			switch (%senderObject)
+			{
+				case ("BankDataFile"):
+				{
+					@%leBankDataFile->$setText(%fileName)
+					@%leBankDataFile->$setCursorPosition(0)
+					break;
+				}
+				default:
+				{
+					if (@%debug) {debug -c "The object that sent this signal is not known. @%s{msgDebugProb}";}
+				}
+			}
+		}
+		else
+		{
+			debug -c "Argument 0 was null. @%s{msgDebugProb}"
+		}
+	}
+	
 	function settingsSaveToDisk(saves the settings hash to disk)
 	{
 		/* autoexpenser::main::settingsSaveToDisk
@@ -38,7 +73,7 @@ class("autoexpenser::main","widget")
 				}
 				else
 				{
-					dialog.message -b ("Warning", "Could not open the settings file to save settings to disk.<br/>This is most likely a bug and should be reported to the software developer.", $icon("warning"), "/okay...")
+					dialog.message -b ("Warning", "Could not open the settings file to save settings to disk.<br/>@%s{msgDebugProb}", $icon("warning"), "/okay...")
 					{}
 				}
 				@%intPrevTab = %intNewTab
@@ -68,9 +103,9 @@ class("autoexpenser::main","widget")
 		
 		#debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()
 		
-		%signalSenderName = @$signalSender()->$name()
+		%senderName = @$signalSender()->$name()
 		
-		%senderHier = $str.split("|",%signalSenderName)
+		%senderHier = $str.split("|",%senderName)
 		
 		%settingName = %senderHier[$(%senderHier[]# - 1)]
 		
@@ -85,6 +120,9 @@ class("autoexpenser::main","widget")
 		
 		### settings
 		
+		@%s{msgDebugDef}	= "This is a definitely a bug. You should report it to the software developer."
+		@%s{msgDebugForgot}	= "If you see this, it means the developer forgot to comment this line."
+		@%s{msgDebugProb}	= "This is probably a bug and should be reported to the software developer."
 		@%s{osDirSlash}		= "\\"
 		@%s{programName}	= "Auto Expenser"
 		@%s{programNameDev}	= "autoExpenser"
@@ -253,6 +291,7 @@ class("autoexpenser::main","widget")
 		### objects connect
 		
 		objects.connect @%btnBankDataFile clicked $$ browseButtonClicked
+		objects.connect @%btnBankDataFile signalDialogFile $$ slotDialogFile
 		objects.connect @%leLocalDatabase textChanged $$ settingsCatchChanges
 		objects.connect @%tabwTabs currentChanged $$ settingsSaveToDisk
 		
@@ -267,44 +306,29 @@ class("autoexpenser::main","widget")
 			This function is a slot to handle when a "Browse" button is clicked when the user wants to search for a file.
 		*/
 		
-		if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
+		#if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
 		
-		debug -c $b()Is this the name of the app var? @$className()
-		
-		dialog.file -b ("Open", "Open File...",,, @$signalSender()->$name())
+		dialog.file -b ("Open", "Open File...",,, @$signalSender, @%s{msgDebugForgot}, @%s{msgDebugDef})
 		{
 			// dev-note:	$0 contains the absolute path to the chosen file. if the user cancels, $0 will be null
 			//			$1 will contain the signalSender name, so we can determine what we should do with $0 if it exists
-			debug -c \n0 = $0\n1 = $1
+			//			$2 contains a debug message string
+			//			$3 contains a debug message string
 			if ($0)
 			{
 				if ($1)
 				{
 					%signalSender = $1
-					if ($system.osname == "Windows") {%dirSep = "\\";} else {%dirSep = "/";}
-					%senderHier = $str.split("|",%signalSender)
-					%widgetName = %senderHier[$(%senderHier[]# - 1)];
-					switch (%widgetName)
-					{
-						case ("BankDataFile"):
-						{
-							debug -c %widgetName called for this file.
-							break;
-						}
-						default:
-						{
-							debug -c the widget that requested this file is not known in this area of the code.\n This is probably a bug and should be reported to the software developer.\n$b()widgetName = %widgetName$b()\n$b()signalSender = %signalSender$b()
-						}
-					}
+					%signalSender->$emit("signalDialogFile", $0)
 				}
 				else
 				{
-					debug -c arg 1 was empty. this is a problem because we don't know which widget asked for the file. this is a bug, you should report it to the software developer.
+					debug -c "Argument 1 was null. This is a problem because we don't know which widget asked for the file. $3"
 				}
 			}
 			else
 			{
-				debug -c no filename was returned, user must have cancelled the selection. if you see this, it means the developer forgot to comment this line!
+				debug -c "No filename was returned, user must have cancelled the selection. $2"
 			}
 		
 		}
