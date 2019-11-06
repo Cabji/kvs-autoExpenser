@@ -56,8 +56,20 @@ class("autoexpenser::main","widget")
 			case ("BankDataLoad"):
 			{
 				debug -c Load Bank Data button clicked;
-				if (@%leBankDataFile->$text())
+				%fileIn = @%leBankDataFile->$text()
+				if ($file.exists(%fileIn))
 				{
+					%fileH = $new(file,,"slotButtonClicked|File Handling Object")
+					%fileH->$setName(%fileIn)
+					%fileH->$open("ReadOnly")
+					%i = 0
+					%line = dummy
+					while (%line)
+					{
+						%line = %fileH->$readLine()
+						debug -c %i: %line;
+						%i++
+					}
 				}
 				else
 				{
