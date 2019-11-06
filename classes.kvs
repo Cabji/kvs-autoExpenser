@@ -57,25 +57,15 @@ class("autoexpenser::main","widget")
 			{
 				debug -c Load Bank Data button clicked;
 				%fileIn = @%leBankDataFile->$text()
-				if ($file.exists(%fileIn))
+				switch (@%coboBankDataSepType->$textAt(@%coboBankDataSepType->$currentItem()))
 				{
-					%fileH = $new(file,,"slotButtonClicked|File Handling Object")
-					%fileH->$setName(%fileIn)
-					%fileH->$open("ReadOnly")
-					%i = 0
-					%line = dummy
-					while (%line)
-					{
-						%line = %fileH->$readLine()
-						debug -c %i: %line;
-						%i++
-					}
+					case ("Comma"):	{%sep = ","; break;}
+					case ("Pipe"):	{%sep = "|"; break;}
+					case ("Tab"):	{%sep = "\t"; break;}
+					default:		{%sep = ",";}
 				}
-				else
-				{
-					dialog.message -b ("Notice", "No bank data file found.<br/><br/>Select a data file by click the Browse button on the Bank Data tab's page.", $icon(info), "/okay...")
-					{}
-				}
+				
+				@$bankDataReadFile(%fileIn, %sep, @%cbBankDataFirstLine->$isChecked(), @%bdtBankDataTable)
 				break;
 			}
 			default:
@@ -388,6 +378,58 @@ class("autoexpenser::main","widget")
 			}
 		
 		}
+	}
+	
+	function bankDataReadFile(this function parses a file into the bankdatatable object)
+	{
+		/* autoexpenser::main::bankDataReadFile
+		
+			This function parses a file into the bankdatatable object: @%bdtBankDataTable
+		
+			Parameters - bankDataReadFile(<filename>,<seperator>,[firstRow],[target])
+		
+				$0: filename:string		The filename to read from
+				$1: seperator:string		The seperator character to use on the file data
+				$2: firstRow:bool		Whether the first line in the file has column titles or not
+				$3: target:tablewidget	The tablewidget to put the parsed data into
+		*/
+		
+		%fileIn = $0
+		%firstRow = $2
+		%sep = $1
+		%success = $false
+		%target = $3
+		
+		if (%fileIn && %sep)
+		{
+			if ($file.exists(%fileIn))
+			{
+				%fileH = $new(file,,"slotButtonClicked|File Handling Object")
+				%fileH->$setName(%fileIn)
+				%fileH->$open("ReadOnly")
+				%i = 0
+				%line = dummy
+				while (%line)
+				{
+					%line = %fileH->$readLine()
+					%row = $str.split(%sep,%line)
+					debug -c %i: %row[0];
+					%i++
+				}
+				%success = $true
+			}
+			else
+			{
+				dialog.message -b ("Notice", "Bank data file not found.<br/><br/>There was no file found at:<br/><br/>%fileIn<br/><br/>Check the filename and path and try again.", $icon(info), "/okay...")
+				{}
+			}
+		}
+		else
+		{
+			if (@%debug) {debug -c "Required arguments 0 or 1 did not exist. Check the values passed to this function. @%s{msgDebugProb}";}
+		}
+		
+		return %success
 	}
 	
 }
