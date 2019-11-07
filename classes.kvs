@@ -55,7 +55,7 @@ class("autoexpenser::main","widget")
 		{
 			case ("BankDataLoad"):
 			{
-				debug -c Load Bank Data button clicked;
+				@%bdtBankDataTable->$clearTable()
 				%fileIn = @%leBankDataFile->$text()
 				switch (@%coboBankDataSepType->$textAt(@%coboBankDataSepType->$currentItem()))
 				{
@@ -313,6 +313,9 @@ class("autoexpenser::main","widget")
 		
 		@%bdtBankDataTable = $new(autoexpenser::bankdatatable, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|BankDataTable")
 		
+		@%lblBankDataStatus = $new(label, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Label|Status")
+		@%lblBankDataStatus->$setFrameStyle("Sunken")
+		
 			// page layout settings
 		
 		@%lPageBankData->$addMultiCellWidget(@%lblBankDataFile,		0,0,0,0)
@@ -323,6 +326,7 @@ class("autoexpenser::main","widget")
 		@%lPageBankData->$addMultiCellWidget(@%cbBankDataFirstLine,	2,2,0,2)
 		@%lPageBankData->$addMultiCellWidget(@%btnBankDataLoad,		3,3,0,2)
 		@%lPageBankData->$addMultiCellWidget(@%bdtBankDataTable,		4,6,0,2)
+		@%lPageBankData->$addMultiCellWidget(@%lblBankDataStatus,		7,7,0,2)
 		
 		// add 'pages' to tabwidget
 		@%tabwTabs->$addTab(@%wgtPageSettings, "Settings")
@@ -408,13 +412,43 @@ class("autoexpenser::main","widget")
 				%fileH->$setName(%fileIn)
 				%fileH->$open("ReadOnly")
 				%i = 0
-				%line = dummy
+				%line = $true
+				%rowsAdded = 0
+		
 				while (%line)
 				{
 					%line = %fileH->$readLine()
 					%row = $str.split(%sep,%line)
-					debug -c %i: %row[0];
+					if (%i == 0)
+					{
+						%countCol = %row[]#;
+						%target->$setColumnCount(%countCol)
+					}
+		
+					if (%i == 0 && %firstRow)
+					{
+						// use this row to set the column titles
+						%target->%columnTitles = %row
+						%target->$setColumnTitles()
+					}
+					else
+					{
+						// process line as a normal row
+						// check if this row has enough columns
+						if (%row[]# >= %countCol)
+						{
+							// sort this row into 'acceptable' row data: add directly to bankdatatable object
+							%target->$addRow(%row)
+							%rowsAdded++
+						}
+						else
+						{
+							// sort this row into 'problematic' row data
+						}
+					}
 					%i++
+					@%lblBankDataStatus->$setText("%rowsAdded rows added to data table. %i total rows read from file.")
+					@%lblBankDataStatus->$setFrameStyle("Sunken")
 				}
 				%success = $true
 			}
@@ -440,16 +474,73 @@ class("autoexpenser::common","object")
 
 class("autoexpenser::bankdatatable","tablewidget")
 {
+	function setColumnTitles(sets the column titles using the classes internal column title array)
+	{
+		// autoexpenser::banktabledata::setCOlumnTitles
+		// set the column title using the class' internal column title array @%columnTitles
+		
+		@$setHorizontalHeaderLabels(@%columnTitles)
+		return $true
+	}
+	
 	function constructor(runs when the bankdatatable object is created)
 	{
 		/* autoexpenser::bankdatatable
 		
 		*/
 		
+		@%s{msgDebugDef}	= "This is a definitely a bug. You should report it to the software developer."
+		@%s{msgDebugForgot}	= "If you see this, it means the developer forgot to comment this line."
+		@%s{msgDebugProb}	= "This is probably a bug and should be reported to the software developer."
+		
 		@%columnTitles = $array()
+		@%intRowCurrent = 0
 		
 		@$setColumnCount(@%columnTitles[]#)
 		@$setHorizontalHeaderLabels(@%columnTitles)
+	}
+	
+	function clearTable(clears the current table back to zero contents)
+	{
+		// autoexpenser::banktabledata::clearTable
+		// clears the current table back to zero contents
+		
+		@$clear()
+		@%intRowCurrent = 0
+		return $true
+	}
+	
+	function addRow(adds a row to the bankdatatable object)
+	{
+		/* autoexpenser::bankdatatable::addRow
+		
+			Adds a row to the bankdatatable object
+		
+			Parameters - addRow(<rowData>)
+		
+				$0: addRow:array		Array that holds the data to insert into the row
+		
+		*/
+		
+		%rowData = $0
+		%success = $false
+		
+		if ($typeOf(%rowData) == "array")
+		{
+			@$setRowCount($(@$rowCount + 1))
+			for (%i = 0; %i < %rowData[]#; %i++)
+			{
+				@$setText(@%intRowCurrent,%i,%rowData[%i])
+			}
+			@%intRowCurrent++
+			%success = $true
+		}
+		else
+		{
+			debug -c "Argument 0 (rowData) was not type 'array'. Check your data values. @%s{msgDebugForgot}"
+		}
+		
+		return %success
 	}
 	
 }
