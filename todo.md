@@ -8,7 +8,11 @@
   </ul>
   <li>Problematic Data TableWidget</li>
   <ul>
-    <li>Decide how to build this and ho it will be integrated into the UI</li>
+    <li>Decide how to build this and how it will be integrated into the UI</li>
+  </ul>
+  <li>Settings Tab</li>
+  <ul>
+    <li>Haven't thought about this yet</li>
   </ul>
   <li>Testing</li>
   <ul>
