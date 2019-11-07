@@ -328,6 +328,9 @@ class("autoexpenser::main","widget")
 		@%lPageBankData->$addMultiCellWidget(@%bdtBankDataTable,		4,6,0,2)
 		@%lPageBankData->$addMultiCellWidget(@%lblBankDataStatus,		7,7,0,2)
 		
+		@%lPageBankData->$setRowStretch(7, 0)
+		@%lPageBankData->$setRowStretch(5, 1)
+		
 		// add 'pages' to tabwidget
 		@%tabwTabs->$addTab(@%wgtPageSettings, "Settings")
 		@%tabwTabs->$addTab(@%wgtPageBankData, "Bank Data")
@@ -408,6 +411,7 @@ class("autoexpenser::main","widget")
 		{
 			if ($file.exists(%fileIn))
 			{
+				%emptyLines = 0
 				%fileH = $new(file,,"slotButtonClicked|File Handling Object")
 				%fileH->$setName(%fileIn)
 				%fileH->$open("ReadOnly")
@@ -418,6 +422,7 @@ class("autoexpenser::main","widget")
 				while (%line)
 				{
 					%line = %fileH->$readLine()
+					
 					%row = $str.split(%sep,%line)
 					if (%i == 0)
 					{
@@ -433,7 +438,7 @@ class("autoexpenser::main","widget")
 						{
 							if ($str.match(\"*\",%row[%j]))
 							{
-								%row[%j] = $str.strip($str.rightfromfirst($str.chop(%row[%j], 1),\"))
+								%row[%j] = $str.rightfromfirst($str.chop($str.strip(%row[%j]), 1),\")
 							}
 						}
 						%target->%columnTitles = %row
@@ -452,10 +457,20 @@ class("autoexpenser::main","widget")
 						else
 						{
 							// sort this row into 'problematic' row data
+							// check if the line is not empty
+							if (%line != "")
+							{
+								// add this line's content to the problematic data tablewidget
+							}
+							else
+							{
+								// this line is empty, dont worry about it
+								%emptyLines++
+							}
 						}
 					}
 					%i++
-					@%lblBankDataStatus->$setText("%rowsAdded rows added to data table. %i total rows read from file.")
+					@%lblBankDataStatus->$setText("%i total lines read from file. %rowsAdded rows added to data table. %emptyLines empty lines in file.")
 					@%lblBankDataStatus->$setFrameStyle("Box", "Raised")
 				}
 				%success = $true
@@ -545,9 +560,9 @@ class("autoexpenser::bankdatatable","tablewidget")
 				// check if row field value has quotes on both ends, remove if it does.
 				if ($str.match(\"*\",%rowData[%i]))
 				{
-					%rowData[%i] = $str.rightfromfirst($str.chop(%rowData[%i], 1),\")
+					%rowData[%i] = $str.rightfromfirst($str.chop($str.strip(%rowData[%i]), 1),\")
 				}
-				@$setText(@%intRowCurrent,%i,$str.strip(%rowData[%i]))
+				@$setText(@%intRowCurrent,%i,%rowData[%i])
 			}
 			@%intRowCurrent++
 			%success = $true
