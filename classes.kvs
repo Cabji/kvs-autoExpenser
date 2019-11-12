@@ -99,6 +99,7 @@ class("autoexpenser::main","widget")
 		{
 			case ("0"):
 			{
+				if (@%debug) {debug -c "came from the Settings tab, so save settings to disk.";}
 				# save the settings hash to disk
 				%cfg = $config.open(@%s{settingsFile}, rw)
 				if (%cfg)
@@ -119,14 +120,11 @@ class("autoexpenser::main","widget")
 				@%intPrevTab = %intNewTab
 				break;
 			}
-			case ("1"):
-			{
-				@%intPrevTab = %intNewTab
-				break;
-			}
 			default:
 			{
-				if (@%debug) {debug -c we don't know which tab we came from. the value we found was: %intPrevTab;}
+				if (@%debug) {debug -c "we don't know which tab we came from, and it probably doesn't matter. the value we found was: @%intPrevTab";}
+				@%intPrevTab = %intNewTab
+				break;
 			}
 		}
 	}
@@ -207,12 +205,14 @@ class("autoexpenser::main","widget")
 		@%l0->$addMultiCellWidget(@%tabwTabs, 1,1,0,0)
 		
 		// create tab 'pages'
-		@%wgtPageSettings = $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|Settings")
-		@%wgtPageBankData = $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|BankData")
+		@%wgtPageSettings	= $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|Settings")
+		@%wgtPageBankData	= $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|BankData")
+		@%wgtPageDataTrans	= $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|DataTrans")
 		
 		// create 'page' layout
 		@%lPageSettings = $new(layout, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Layout")
 		@%lPageBankData = $new(layout, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Layout")
+		@%lPageDataTrans = $new(layout, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|Layout")
 		
 		// create 'page' child widgets
 		
@@ -331,9 +331,15 @@ class("autoexpenser::main","widget")
 		@%lPageBankData->$setRowStretch(7, 0)
 		@%lPageBankData->$setRowStretch(5, 1)
 		
+		### Data Translation tab
+		
+		
+		
+		
 		// add 'pages' to tabwidget
-		@%tabwTabs->$addTab(@%wgtPageSettings, "Settings")
-		@%tabwTabs->$addTab(@%wgtPageBankData, "Bank Data")
+		@%tabwTabs->$addTab(@%wgtPageSettings,	"Settings")
+		@%tabwTabs->$addTab(@%wgtPageBankData,	"Bank Data")
+		@%tabwTabs->$addTab(@%wgtPageDataTrans,	"Data Translation")
 		
 		### objects connect
 		
@@ -504,6 +510,25 @@ class("autoexpenser::bankdatatable","tablewidget")
 		
 		@$setHorizontalHeaderLabels(@%columnTitles)
 		return $true
+	}
+	
+	function getColumnTitles(return the column titles as a list object)
+	{
+		// autoexpenser::banktabledata::getCOlumnTitles
+		// return the column titles as a list object
+		
+		%success = $false
+		%colCount = @$columnCount()
+		
+		if (%colCount > 0)
+		{
+			for (%i = 0; %i < %colCount; %i++)
+			{
+				
+			}
+		}
+		
+		return %success
 	}
 	
 	function constructor(runs when the bankdatatable object is created)
