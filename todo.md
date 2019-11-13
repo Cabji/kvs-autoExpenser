@@ -2,9 +2,10 @@
 <ul>
   <li>Bank Data Tab</li>
   <ul>
+    <li>Build an opposite-click popupmenu that lets the user interact with the bankdatatable widget (assigning title names for columns, selecting which columns we want to keep/discard when the data is moved onto the next stage)</li>
+    <li>Push any 'problematic' csv data lines into another tablewidget for the user to view and decide what to do</li>
     <li><strike>Fix right-most column title bug where double quote is on end of title string</strike></li>
     <li><strike>Check totals in the Status area: I think it is adding an extra 1 to the total count.</strike></li>
-    <li>Push any 'problematic' csv data lines into another tablewidget for the user to view and decide what to do</li>
     <li><strike>Fix stretch factors on UI widgets (bankdatatable and statusbar)</strike></li>
   </ul>
   <li>Problematic Data TableWidget</li>
