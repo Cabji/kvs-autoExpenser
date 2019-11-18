@@ -40,6 +40,16 @@ class("autoexpenser::main","widget")
 		}
 	}
 	
+	function slotCheckBoxKeepColumnsToggled(this function handles when the Keep Column checkboxes are toggled)
+	{
+		/* autoexpenser::main::slotCheckBoxKeepColumnsToggled
+		
+			this function handles when the Keep Column checkboxes are toggled
+		*/
+		
+		debug -c you toggled checkbox: @$signalSender->$name
+	}
+	
 	function slotButtonClicked(this function handles button clicks)
 	{
 		/* autoexpenser::main::slotButtonClicked
@@ -509,28 +519,34 @@ class("autoexpenser::main","widget")
 		// create options at bottom of the Bank Data page for Data Translation
 		if (%success)
 		{
-			@%lblBankDataKeepColumns	= $new(label, @%wgtPageBankData)
-			@%lblBankDataKeepColumns->$setText("<b>Column Preservation</b>")
-			@%lPageBankData->$addMultiCellWidget(@%lblBankDataKeepColumns, 8,8,0,2)
+			@%vboxKeepColumns 		= $new(vbox, @%wgtPageBankData)
 		
-			@%hboxKeepColumns 		= $new(hbox, @%wgtPageBankData)
-			@%hboxKeepColumnsNewNames	= $new(hbox, @%wgtPageBankData)
+			@%lblBankDataKeepColumns	= $new(label, @%vboxKeepColumns)
+			@%lblBankDataKeepColumns->$setText("<b>Column Preservation</b>")
+			@%lblBankDataKeepColumns->$setToolTip("Select which columns to preserve and what to call them")
+		
+			@%hboxKeepColumns 		= $new(hbox, @%vboxKeepColumns)
+			@%hboxKeepColumnsNewNames	= $new(hbox, @%vboxKeepColumns)
+			@%btnBankDataContinue		= $new(button, @%vboxKeepColumns)
+			@%btnBankDataContinue->$setText("Continue")
+			@%btnBankDataContinue->$setEnabled($false)
 		
 			for (%i = 0; %i < @%bdtBankDataTable->%columnTitles[]#; %i++)
 			{
 				%colTitle = @%bdtBankDataTable->%columnTitles[%i]
 				// for each columnTitle, we need to make a checkbox
-				@%arrBDTKeepColumns[%i] = $new(checkbox, @%hboxKeepColumns)
+				@%arrBDTKeepColumns[%i] = $new(checkbox, @%hboxKeepColumns, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|ArrayKeepColumns|%i")
 				@%arrBDTKeepColumns[%i]->$setText(%colTitle)
 				@%arrBDTKeepColumns[%i]->$setToolTip("Tick to preserve %colTitle column for Data Translation")
 		
 				@%arrBDTKeepColumnsNewNames[%i] = $new(lineedit, @%hboxKeepColumnsNewNames)
 				@%arrBDTKeepColumnsNewNames[%i]->$setText("%colTitle")
 				@%arrBDTKeepColumnsNewNames[%i]->$setToolTip("Enter the name that you want the %colTitle column to be after Data Translation")
+		
+				objects.connect @%arrBDTKeepColumns[%i] toggled $$ slotCheckBoxKeepColumnsToggled
 			}
 		
-			@%lPageBankData->$addMultiCellWidget(@%hboxKeepColumns, 9,9,0,2)
-			@%lPageBankData->$addMultiCellWidget(@%hboxKeepColumnsNewNames, 10,10,0,2)
+			@%lPageBankData->$addMultiCellWidget(@%vboxKeepColumns, 9,9,0,2)
 		}
 		
 		return %success
