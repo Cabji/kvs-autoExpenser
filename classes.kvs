@@ -173,8 +173,10 @@ class("autoexpenser::main","widget")
 		
 		### class variables
 		
-		@%debug 			= $true
-		@%intPrevTab		= 0
+		@%arrBDTKeepColumns			= $array()
+		@%arrBDTKeepColumnsNewNames	= $array()
+		@%debug 					= $true
+		@%intPrevTab				= 0
 		
 		### start up checks
 		
@@ -315,6 +317,8 @@ class("autoexpenser::main","widget")
 		
 		@%lblBankDataStatus = $new(label, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Label|Status")
 		@%lblBankDataStatus->$setFrameStyle("Sunken")
+		@%lblBankDataStatus->$setText("Label")
+		@%lblBankDataStatus->$setMouseTracking($true)
 		
 			// page layout settings
 		
@@ -334,14 +338,24 @@ class("autoexpenser::main","widget")
 		### Data Translation tab
 		
 		
-		
-		
 		// add 'pages' to tabwidget
 		@%tabwTabs->$addTab(@%wgtPageSettings,	"Settings")
 		@%tabwTabs->$addTab(@%wgtPageBankData,	"Bank Data")
 		@%tabwTabs->$addTab(@%wgtPageDataTrans,	"Data Translation")
 		
+		### Popup Menus
+		
+		// hash to reference popupmenu uids to an action
+		@%hashPUMUIDs = $hash()
+		
+		@%pumBankDataTable = $new(popupmenu, @%bdtBankDataTable, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|PopupMenu")
+		@%hashPUMUIDs{@%pumBankDataTable->$name()}{@%pumBankDataTable->$insertItem("Discard Column", $icon("bin"))} = "Discard Column"
+		@%hashPUMUIDs{@%pumBankDataTable->$name()}{@%pumBankDataTable->$insertItem("Set Column Title", $icon("edit"))} = "Set Column Title"
+		
+		
 		### objects connect
+		
+		@$addPrivateImpls()
 		
 		objects.connect @%btnBankDataFile clicked			$$ browseButtonClicked
 		objects.connect @%btnBankDataFile signalDialogFile	$$ slotDialogFile
@@ -492,13 +506,45 @@ class("autoexpenser::main","widget")
 			if (@%debug) {debug -c "Required arguments 0 or 1 did not exist. Check the values passed to this function. @%s{msgDebugProb}";}
 		}
 		
+		// create options at bottom of the Bank Data page for Data Translation
+		if (%success)
+		{
+			@%lblBankDataKeepColumns	= $new(label, @%wgtPageBankData)
+			@%lblBankDataKeepColumns->$setText("<b>Column Preservation</b>")
+			@%lPageBankData->$addMultiCellWidget(@%lblBankDataKeepColumns, 8,8,0,2)
+		
+			@%hboxKeepColumns 		= $new(hbox, @%wgtPageBankData)
+			@%hboxKeepColumnsNewNames	= $new(hbox, @%wgtPageBankData)
+		
+			for (%i = 0; %i < @%bdtBankDataTable->%columnTitles[]#; %i++)
+			{
+				%colTitle = @%bdtBankDataTable->%columnTitles[%i]
+				// for each columnTitle, we need to make a checkbox
+				@%arrBDTKeepColumns[%i] = $new(checkbox, @%hboxKeepColumns)
+				@%arrBDTKeepColumns[%i]->$setText(%colTitle)
+				@%arrBDTKeepColumns[%i]->$setToolTip("Tick to preserve %colTitle column for Data Translation")
+		
+				@%arrBDTKeepColumnsNewNames[%i] = $new(lineedit, @%hboxKeepColumnsNewNames)
+				@%arrBDTKeepColumnsNewNames[%i]->$setText("%colTitle")
+				@%arrBDTKeepColumnsNewNames[%i]->$setToolTip("Enter the name that you want the %colTitle column to be after Data Translation")
+			}
+		
+			@%lPageBankData->$addMultiCellWidget(@%hboxKeepColumns, 9,9,0,2)
+			@%lPageBankData->$addMultiCellWidget(@%hboxKeepColumnsNewNames, 10,10,0,2)
+		}
+		
 		return %success
 	}
 	
-}
-
-class("autoexpenser::common","object")
-{
+	function addPrivateImpls(adds privateimpls)
+	{
+		/* autoExpenser::main::addPrivateImpls
+		
+			This function is to be used when you are f()rced to use a privateimpl instead of objects.connect to 
+			create a handler for an object.
+		*/
+	}
+	
 }
 
 class("autoexpenser::bankdatatable","tablewidget")
@@ -541,6 +587,7 @@ class("autoexpenser::bankdatatable","tablewidget")
 		@%s{msgDebugForgot}	= "If you see this, it means the developer forgot to comment this line."
 		@%s{msgDebugProb}	= "This is probably a bug and should be reported to the software developer."
 		
+		@%columnKeepTitles = $hash()
 		@%columnTitles = $array()
 		@%intRowCurrent = 0
 		
@@ -587,7 +634,9 @@ class("autoexpenser::bankdatatable","tablewidget")
 				{
 					%rowData[%i] = $str.rightfromfirst($str.chop($str.strip(%rowData[%i]), 1),\")
 				}
+				// note: %i is the column uid, @%intRowCurrent is the row uid
 				@$setText(@%intRowCurrent,%i,%rowData[%i])
+				@$setItemFlags(@%intRowCurrent, %i, "enabled")
 			}
 			@%intRowCurrent++
 			%success = $true
