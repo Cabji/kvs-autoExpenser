@@ -1,5 +1,43 @@
 class("autoexpenser::main","widget")
 {
+	function zzzComments(this function only holds comments for developer reasons)
+	{
+		/* autoexpenser::main::zzzComments
+		
+			This function holds comments for the developer.
+		
+		======== Class Members ======== 
+		
+		@%arrBDTKeepColumns (array)
+		
+			An array of checkbox objects.
+			The array index values are created at runtime when a user clicks the Load Bank Data button, 
+			and so it is not a fixed size array. 
+			Checkbox items can be accessed via: 
+		
+				@%arrBDTKeepColumns[%i]->$checkboxFunction
+		
+			where $checkboxFunction is any function from the checkbox class
+		
+			See also: @%arrBDTKeepColumnsNewNames
+		
+		---
+		@%arrBDTKeepColumnsNewNames (array)
+		
+			An array of lineedit objects.
+			The array index values are created at runtime when a user clicks the Load Bank Data button, 
+			and so it is not a fixed size array. 
+			Lineedit items can be accessed via: 
+		
+				@%arrBDTKeepColumnsNewNames[%i]->$lineditFunction
+		
+			where $lineeditFunction is any function from the lineedit class
+		
+			See also: @%arrBDTKeepColumns
+		
+		*/
+	}
+	
 	function slotDialogFile(this function catches the signalDialogFile thrown by any object)
 	{
 		/* autoexpenser::main::slotDialogFile
@@ -45,9 +83,24 @@ class("autoexpenser::main","widget")
 		/* autoexpenser::main::slotCheckBoxKeepColumnsToggled
 		
 			this function handles when the Keep Column checkboxes are toggled
+		
+			Whenever a checkbox in the Data Preservation section is toggled we need to check if the Continue button should be enabled or disabled
+			The main class has a member to track this: @%intBankDataKeepCount
+			Which is a counter of how many columns have been enabled. If this value hits 0 we should disable the Continue button.
 		*/
 		
 		debug -c you toggled checkbox: @$signalSender->$name
+		
+		// check the $isChecked() value of the signalSender and adjust the @%intBankDataKeepCount value accordingly
+		if (@$signalSender->$isChecked()) {@%intBankDataKeepCount++;}
+		else {@%intBankDataKeepCount--;}
+		
+		// if @%intBankDataKeepCount == 0, disable the Continue button
+		if (@%intBankDataKeepCount == 0) {@%btnBankDataContinue->$setEnabled($false);}
+		else {@%btnBankDataContinue->$setEnabled($true);}
+		
+		debug -c KeepCount = @%intBankDataKeepCount
+		return $true
 	}
 	
 	function slotButtonClicked(this function handles button clicks)
@@ -76,6 +129,44 @@ class("autoexpenser::main","widget")
 				}
 				
 				@$bankDataReadFile(%fileIn, %sep, @%cbBankDataFirstLine->$isChecked(), @%bdtBankDataTable)
+				break;
+			}
+			case ("KeepColumnsContinue"):
+			{
+				// check if user has selected any columns to preserve
+				if (@%intBankDataKeepCount > 0)
+				{
+					// @%arrBDTKeepColumns and @%arrBDTKeepColumnsNewNames hold the bool (true = keep, false = forget) and column names to keep
+					// build the widgets and data for the Data Translation tab
+					@%bdtNewData = $new(autoexpenser::bankdatatable, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|bankdatatable|NewData")		
+					%keepCols = $array()
+					%j = 0
+		
+					// loop the array with the bools to keep
+					for (%i = 0; %i < @%arrBDTKeepColumns[]#; %i++)
+					{
+						if (@%arrBDTKeepColumns[%i]->$isChecked())
+						{
+							// we're keeping this column
+							%keepCols[%j] = @%arrBDTKeepColumnsNewNames[%i]->$text()
+							%j++
+						}
+					}
+					@%bdtNewData->%columnTitles = %keepCols
+					@%bdtNewData->$setColumnTitles()
+		
+					// remove the placeholder label from the Data Translation tab
+					delete @%lblDataTransHelp
+					// add bdtNewData to Data Translation tab layout
+					@%lPageDataTrans->$addMultiCellWidget(@%bdtNewData,	0,0,0,0)
+					
+					// switch to the Data Translation tab
+					@%tabwTabs->$setCurrentPage($(@%tabwTabs->$currentPageIndex() + 1))
+				}
+				else
+				{
+					// user has not selected any columns to preserve
+				}
 				break;
 			}
 			default:
@@ -185,8 +276,10 @@ class("autoexpenser::main","widget")
 		
 		@%arrBDTKeepColumns			= $array()
 		@%arrBDTKeepColumnsNewNames	= $array()
+		// @%bdtNewData				= declared in main::slotButtonClicked::case ("KeepColumnsContinue")
 		@%debug 					= $true
 		@%intPrevTab				= 0
+		@%intBankDataKeepCount		= 0
 		
 		### start up checks
 		
@@ -347,21 +440,18 @@ class("autoexpenser::main","widget")
 		
 		### Data Translation tab
 		
+		@%lblDataTransHelp = $new(label, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|Label|Help")
+		@%lblDataTransHelp->$setText("If you see this message go back to the Bank Data tab and do the following: <br/><ol><li>Select a CSV data file</li><li>Select Seperator type and Title row options</li><li>Click Load Data button</li><li>Select which columns to preserve and set title names</li><li>Click Continue button</li></ol>")
+		
+		
+			// page layout settings
+		
+		@%lPageDataTrans->$addMultiCellWidget(@%lblDataTransHelp,		0,0,0,0)
 		
 		// add 'pages' to tabwidget
 		@%tabwTabs->$addTab(@%wgtPageSettings,	"Settings")
 		@%tabwTabs->$addTab(@%wgtPageBankData,	"Bank Data")
 		@%tabwTabs->$addTab(@%wgtPageDataTrans,	"Data Translation")
-		
-		### Popup Menus
-		
-		// hash to reference popupmenu uids to an action
-		@%hashPUMUIDs = $hash()
-		
-		@%pumBankDataTable = $new(popupmenu, @%bdtBankDataTable, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|PopupMenu")
-		@%hashPUMUIDs{@%pumBankDataTable->$name()}{@%pumBankDataTable->$insertItem("Discard Column", $icon("bin"))} = "Discard Column"
-		@%hashPUMUIDs{@%pumBankDataTable->$name()}{@%pumBankDataTable->$insertItem("Set Column Title", $icon("edit"))} = "Set Column Title"
-		
 		
 		### objects connect
 		
@@ -422,6 +512,11 @@ class("autoexpenser::main","widget")
 		/* autoexpenser::main::bankDataReadFile
 		
 			This function parses a file into the bankdatatable object: @%bdtBankDataTable
+			If the function successfully imports data from the file, it will build a set of child widgets
+			for the user to select which data to bring over to the Data Translation tab.
+		
+			The child widgets will be accessed in the autoexpenser::main::slotButtonClicked function, 
+			case ("KeepColumnsContinue")
 		
 			Parameters - bankDataReadFile(<filename>,<seperator>,[firstRow],[target])
 		
@@ -527,9 +622,10 @@ class("autoexpenser::main","widget")
 		
 			@%hboxKeepColumns 		= $new(hbox, @%vboxKeepColumns)
 			@%hboxKeepColumnsNewNames	= $new(hbox, @%vboxKeepColumns)
-			@%btnBankDataContinue		= $new(button, @%vboxKeepColumns)
+			@%btnBankDataContinue		= $new(button, @%vboxKeepColumns, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|Button|KeepColumnsContinue")
 			@%btnBankDataContinue->$setText("Continue")
 			@%btnBankDataContinue->$setEnabled($false)
+			objects.connect @%btnBankDataContinue clicked $$ slotButtonClicked
 		
 			for (%i = 0; %i < @%bdtBankDataTable->%columnTitles[]#; %i++)
 			{
@@ -567,16 +663,21 @@ class("autoexpenser::bankdatatable","tablewidget")
 {
 	function setColumnTitles(sets the column titles using the classes internal column title array)
 	{
-		// autoexpenser::banktabledata::setCOlumnTitles
-		// set the column title using the class' internal column title array @%columnTitles
+		/* autoexpenser::banktabledata::setColumnTitles
 		
+			set the column titles for the tablewidget based on the @%columnTitles array
+			dev-note: note that @%columnTitles is part of the bankdatatable class, not the main class.
+		
+		*/
+		
+		@$setColumnCount(@%columnTitles[]#)
 		@$setHorizontalHeaderLabels(@%columnTitles)
 		return $true
 	}
 	
 	function getColumnTitles(return the column titles as a list object)
 	{
-		// autoexpenser::banktabledata::getCOlumnTitles
+		// autoexpenser::banktabledata::getColumnTitles
 		// return the column titles as a list object
 		
 		%success = $false
@@ -606,15 +707,14 @@ class("autoexpenser::bankdatatable","tablewidget")
 		@%columnKeepTitles = $hash()
 		@%columnTitles = $array()
 		@%intRowCurrent = 0
-		
-		@$setColumnCount(@%columnTitles[]#)
-		@$setHorizontalHeaderLabels(@%columnTitles)
 	}
 	
 	function clearTable(clears the current table back to zero contents)
 	{
-		// autoexpenser::banktabledata::clearTable
-		// clears the current table back to zero contents
+		/* autoexpenser::banktabledata::clearTable
+		
+			clears the current table back to zero contents
+		*/
 		
 		@$clear()
 		for ($false; @%intRowCurrent >= 0; @%intRowCurrent--)

@@ -13,7 +13,14 @@
   </ul>
   <li>Settings Tab</li>
   <ul>
-    <li>Haven't thought about this yet</li>
+    <li>Button to open Column to Category conversion settings</li>
+    <ul>
+      <li>Column to Category conversion widget</li>
+      <ul>
+        <li>This widget needs to let the user see, alter, add and remove correlating pairs of search strings and categories</li>
+        <li>The conversion pairs need to be stored and presented in 'Sets', where a Set is the settings for a specific data source. For example: You may have data from the National Bank. The National Bank would have its own 'Set' of conversion settings.</li>
+      </ul>
+    </ul>
   </ul>
   <li>Testing</li>
   <ul>
