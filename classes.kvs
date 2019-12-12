@@ -420,7 +420,7 @@ class("autoexpenser::main","widget")
 		
 		@%lblBankDataStatus = $new(label, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Label|Status")
 		@%lblBankDataStatus->$setFrameStyle("Sunken")
-		@%lblBankDataStatus->$setText("Label")
+		@%lblBankDataStatus->$setText("")
 		@%lblBankDataStatus->$setMouseTracking($true)
 		
 			// page layout settings
@@ -543,6 +543,7 @@ class("autoexpenser::main","widget")
 				%i = 0
 				%line = $true
 				%rowsAdded = 0
+				%target->%columnTitles = $array()
 		
 				while (%line)
 				{
@@ -553,45 +554,48 @@ class("autoexpenser::main","widget")
 					{
 						%countCol = %row[]#;
 						%target->$setColumnCount(%countCol)
+						# set placeholder column titles
+						for (%j = 0; %j < %countCol; %j++)
+						{
+							%target->%columnTitles <+ $str.upcase($char($(%j + 97)))
+						}
+		
+						if (%firstRow)
+						{
+							// use this row to set the column titles
+							// check if row field value has quotes on both ends, remove if it does.
+							for (%j = 0; %j < %row[]#; %j++)
+							{
+								if ($str.match(\"*\",%row[%j]))
+								{
+									%row[%j] = $str.rightfromfirst($str.chop($str.strip(%row[%j]), 1),\")
+								}
+							}
+							%target->%columnTitles = %row
+						}
+						%target->$setColumnTitles()
 					}
 		
-					if (%i == 0 && %firstRow)
+					// process line as a normal row
+					// check if this row has enough columns
+					if (%row[]# >= %countCol)
 					{
-						// use this row to set the column titles
-						// check if row field value has quotes on both ends, remove if it does.
-						for (%j = 0; %j < %row[]#; %j++)
-						{
-							if ($str.match(\"*\",%row[%j]))
-							{
-								%row[%j] = $str.rightfromfirst($str.chop($str.strip(%row[%j]), 1),\")
-							}
-						}
-						%target->%columnTitles = %row
-						%target->$setColumnTitles()
+						// sort this row into 'acceptable' row data: add directly to bankdatatable object
+						%target->$addRow(%row)
+						%rowsAdded++
 					}
 					else
 					{
-						// process line as a normal row
-						// check if this row has enough columns
-						if (%row[]# >= %countCol)
+						// sort this row into 'problematic' row data
+						// check if the line is not empty
+						if (%line != "")
 						{
-							// sort this row into 'acceptable' row data: add directly to bankdatatable object
-							%target->$addRow(%row)
-							%rowsAdded++
+							// add this line's content to the problematic data tablewidget
 						}
 						else
 						{
-							// sort this row into 'problematic' row data
-							// check if the line is not empty
-							if (%line != "")
-							{
-								// add this line's content to the problematic data tablewidget
-							}
-							else
-							{
-								// this line is empty, dont worry about it
-								%emptyLines++
-							}
+							// this line is empty, dont worry about it
+							%emptyLines++
 						}
 					}
 					%i++
@@ -614,6 +618,13 @@ class("autoexpenser::main","widget")
 		// create options at bottom of the Bank Data page for Data Translation
 		if (%success)
 		{
+			# if the widgets for the column preservation already exist, we should delete/reset them first.
+			if ($isSet(@%vboxKeepColumns)) {delete @%vboxKeepColumns;}
+			if ($isSet(@%arrBDTKeepColumns)) {@%arrBDTKeepColumns = $array();}
+			if ($isSet(@%arrBDTKeepColumnsNewNames)) {@%arrBDTKeepColumnsNewNames = $array();}
+		
+			debug -c isSet vbox: $isSet(@%vboxKeepColumns)
+		
 			@%vboxKeepColumns 		= $new(vbox, @%wgtPageBankData)
 		
 			@%lblBankDataKeepColumns	= $new(label, @%vboxKeepColumns)
@@ -626,6 +637,8 @@ class("autoexpenser::main","widget")
 			@%btnBankDataContinue->$setText("Continue")
 			@%btnBankDataContinue->$setEnabled($false)
 			objects.connect @%btnBankDataContinue clicked $$ slotButtonClicked
+		
+			debug -c columnTitles: @%bdtBankDataTable->%columnTitles
 		
 			for (%i = 0; %i < @%bdtBankDataTable->%columnTitles[]#; %i++)
 			{
