@@ -118,7 +118,7 @@ class("autoexpenser::main","widget")
 		{
 			case ("BankDataLoad"):
 			{
-				@%bdtBankDataTable->$clearTable()
+				@%dtblBankDataTable->$clearTable()
 				%fileIn = @%leBankDataFile->$text()
 				switch (@%coboBankDataSepType->$textAt(@%coboBankDataSepType->$currentItem()))
 				{
@@ -138,7 +138,7 @@ class("autoexpenser::main","widget")
 				{
 					// @%arrBDTKeepColumns and @%arrBDTKeepColumnsNewNames hold the bool (true = keep, false = forget) and column names to keep
 					// build the widgets and data for the Data Translation tab
-					@%bdtNewData = $new(autoexpenser::bankdatatable, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|bankdatatable|NewData")		
+					@%dtblNewData = $new(autoexpenser::bankdatatable, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|bankdatatable|NewData")		
 					%keepCols = $array()
 					%j = 0
 		
@@ -152,13 +152,13 @@ class("autoexpenser::main","widget")
 							%j++
 						}
 					}
-					@%bdtNewData->%columnTitles = %keepCols
-					@%bdtNewData->$setColumnTitles()
+					@%dtblNewData->%columnTitles = %keepCols
+					@%dtblNewData->$setColumnTitles()
 		
 					// remove the placeholder label from the Data Translation tab
 					delete @%lblDataTransHelp
 					// add bdtNewData to Data Translation tab layout
-					@%lPageDataTrans->$addMultiCellWidget(@%bdtNewData,	0,0,0,0)
+					@%lPageDataTrans->$addMultiCellWidget(@%dtblNewData,	0,0,0,0)
 					
 					// switch to the Data Translation tab
 					@%tabwTabs->$setCurrentPage($(@%tabwTabs->$currentPageIndex() + 1))
@@ -218,16 +218,16 @@ class("autoexpenser::main","widget")
 					dialog.message -b ("Warning", "Could not open the settings file to save settings to disk.<br/>@%s{msgDebugProb}", $icon("warning"), "/okay...")
 					{}
 				}
-				@%intPrevTab = %intNewTab
 				break;
 			}
 			default:
 			{
-				if (@%debug) {debug -c "we don't know which tab we came from, and it probably doesn't matter. the value we found was: @%intPrevTab";}
-				@%intPrevTab = %intNewTab
+				if (@%debug) {debug -c "we didn't come from a significant tab, so it probably doesn't matter. the tab uid we came from was: @%intPrevTab";}
 				break;
 			}
 		}
+		
+		@%intPrevTab = %intNewTab
 	}
 	
 	function settingsCatchChanges(catch setting changes and reflect them into the settings hash)
@@ -276,8 +276,8 @@ class("autoexpenser::main","widget")
 		
 		@%arrBDTKeepColumns			= $array()
 		@%arrBDTKeepColumnsNewNames	= $array()
-		// @%bdtNewData				= declared in main::slotButtonClicked::case ("KeepColumnsContinue")
 		@%debug 					= $true
+		// @%dtblNewData			= declared in main::slotButtonClicked::case ("KeepColumnsContinue")
 		@%intPrevTab				= 0
 		@%intBankDataKeepCount		= 0
 		
@@ -311,11 +311,13 @@ class("autoexpenser::main","widget")
 		
 		// create tab 'pages'
 		@%wgtPageSettings	= $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|Settings")
+		@%wgtPageCSVSet		= $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|CSVSet")
 		@%wgtPageBankData	= $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|BankData")
 		@%wgtPageDataTrans	= $new(widget, $$, "@%a{pnd}|main|tabwidget|Page|DataTrans")
 		
 		// create 'page' layout
 		@%lPageSettings = $new(layout, @%wgtPageSettings, "@%a{pnd}|main|tabwidget|Page|Settings|Layout")
+		@%lPageCSVSet = $new(layout, @%wgtPageCSVSet, "@%a{pnd}|main|tabwidget|Page|CSVSet|Layout")
 		@%lPageBankData = $new(layout, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Layout")
 		@%lPageDataTrans = $new(layout, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|Layout")
 		
@@ -392,6 +394,19 @@ class("autoexpenser::main","widget")
 		@%lPageSettings->$setAlignment(@%lblSettingsTitleLocal,	Bottom)
 		@%lPageSettings->$setAlignment(@%lblSettingsTitleRemote,	Bottom)
 		
+		### CSVSets  tab
+		
+		@%lblCSVSetDataSet = $new(label, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSet|Label|DataSet")
+		@%lblCSVSetDataSet->$setText("Data Set: ")
+		
+		@%coboCSVSetDataSet = $new(combobox, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSet|ComboBox|DataSet")
+		
+		@%dtblCSVSetCategories = $new(autoexpenser::datatable, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSets|DataTable|Categories")
+		
+		@%lPageCSVSet->$addMultiCellWidget(@%lblCSVSetDataSet,		0,0,0,0)
+		@%lPageCSVSet->$addMultiCellWidget(@%coboCSVSetDataSet,		0,0,1,1)
+		@%lPageCSVSet->$addMultiCellWidget(@%dtblCSVSetCategories,		1,1,0,1)
+		
 		### Bank data tab
 		
 		@%lblBankDataFile = $new(label, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Label|BankDataFile")
@@ -416,7 +431,7 @@ class("autoexpenser::main","widget")
 		@%btnBankDataLoad = $new(button, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Button|BankDataLoad")
 		@%btnBankDataLoad->$setText("Load Data")
 		
-		@%bdtBankDataTable = $new(autoexpenser::bankdatatable, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|BankDataTable")
+		@%dtblBankDataTable = $new(autoexpenser::datatable, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|datatable|BankDataTable")
 		
 		@%lblBankDataStatus = $new(label, @%wgtPageBankData, "@%a{pnd}|main|tabwidget|Page|BankData|Label|Status")
 		@%lblBankDataStatus->$setFrameStyle("Sunken")
@@ -432,7 +447,7 @@ class("autoexpenser::main","widget")
 		@%lPageBankData->$addMultiCellWidget(@%coboBankDataSepType,	1,1,1,2)
 		@%lPageBankData->$addMultiCellWidget(@%cbBankDataFirstLine,	2,2,0,2)
 		@%lPageBankData->$addMultiCellWidget(@%btnBankDataLoad,		3,3,0,2)
-		@%lPageBankData->$addMultiCellWidget(@%bdtBankDataTable,		4,6,0,2)
+		@%lPageBankData->$addMultiCellWidget(@%dtblBankDataTable,		4,6,0,2)
 		@%lPageBankData->$addMultiCellWidget(@%lblBankDataStatus,		7,7,0,2)
 		
 		@%lPageBankData->$setRowStretch(7, 0)
@@ -450,6 +465,7 @@ class("autoexpenser::main","widget")
 		
 		// add 'pages' to tabwidget
 		@%tabwTabs->$addTab(@%wgtPageSettings,	"Settings")
+		@%tabwTabs->$addTab(@%wgtPageCSVSet,		"CSV Sets")
 		@%tabwTabs->$addTab(@%wgtPageBankData,	"Bank Data")
 		@%tabwTabs->$addTab(@%wgtPageDataTrans,	"Data Translation")
 		
@@ -638,11 +654,11 @@ class("autoexpenser::main","widget")
 			@%btnBankDataContinue->$setEnabled($false)
 			objects.connect @%btnBankDataContinue clicked $$ slotButtonClicked
 		
-			debug -c columnTitles: @%bdtBankDataTable->%columnTitles
+			debug -c columnTitles: @%dtblBankDataTable->%columnTitles
 		
-			for (%i = 0; %i < @%bdtBankDataTable->%columnTitles[]#; %i++)
+			for (%i = 0; %i < @%dtblBankDataTable->%columnTitles[]#; %i++)
 			{
-				%colTitle = @%bdtBankDataTable->%columnTitles[%i]
+				%colTitle = @%dtblBankDataTable->%columnTitles[%i]
 				// for each columnTitle, we need to make a checkbox
 				@%arrBDTKeepColumns[%i] = $new(checkbox, @%hboxKeepColumns, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|ArrayKeepColumns|%i")
 				@%arrBDTKeepColumns[%i]->$setText(%colTitle)
@@ -672,11 +688,11 @@ class("autoexpenser::main","widget")
 	
 }
 
-class("autoexpenser::bankdatatable","tablewidget")
+class("autoexpenser::datatable","tablewidget")
 {
 	function setColumnTitles(sets the column titles using the classes internal column title array)
 	{
-		/* autoexpenser::banktabledata::setColumnTitles
+		/* autoexpenser::datatable::setColumnTitles
 		
 			set the column titles for the tablewidget based on the @%columnTitles array
 			dev-note: note that @%columnTitles is part of the bankdatatable class, not the main class.
@@ -690,7 +706,7 @@ class("autoexpenser::bankdatatable","tablewidget")
 	
 	function getColumnTitles(return the column titles as a list object)
 	{
-		// autoexpenser::banktabledata::getColumnTitles
+		// autoexpenser::datatable::getColumnTitles
 		// return the column titles as a list object
 		
 		%success = $false
@@ -707,9 +723,9 @@ class("autoexpenser::bankdatatable","tablewidget")
 		return %success
 	}
 	
-	function constructor(runs when the bankdatatable object is created)
+	function constructor(runs when the datatable object is created)
 	{
-		/* autoexpenser::bankdatatable
+		/* autoexpenser::datatable
 		
 		*/
 		
@@ -724,7 +740,7 @@ class("autoexpenser::bankdatatable","tablewidget")
 	
 	function clearTable(clears the current table back to zero contents)
 	{
-		/* autoexpenser::banktabledata::clearTable
+		/* autoexpenser::datatable::clearTable
 		
 			clears the current table back to zero contents
 		*/
@@ -738,11 +754,11 @@ class("autoexpenser::bankdatatable","tablewidget")
 		return $true
 	}
 	
-	function addRow(adds a row to the bankdatatable object)
+	function addRow(adds a row to the datatable object)
 	{
-		/* autoexpenser::bankdatatable::addRow
+		/* autoexpenser::datatable::addRow
 		
-			Adds a row to the bankdatatable object
+			Adds a row to the datatable object
 		
 			Parameters - addRow(<rowData>)
 		
