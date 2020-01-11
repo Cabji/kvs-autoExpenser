@@ -281,6 +281,7 @@ class("autoexpenser::main","widget")
 		@%arrBDTKeepColumnsNewNames	= $array()
 		@%arrCSVDataSetNames			= $array()
 		@%debug 					= $true
+		@%fioConfigs				= $new(autoexpenser::configio, $$, "@%a{pnd}|main|fioConfigs")
 		// @%dtblNewData			= declared in main::slotButtonClicked::case ("KeepColumnsContinue")
 		@%intPrevTab				= 0
 		@%intBankDataKeepCount		= 0
@@ -692,104 +693,6 @@ class("autoexpenser::main","widget")
 	
 }
 
-class("autoexpenser::fileio","object")
-{
-	function writeToConfig(writes values to KVIrc Config typed file)
-	{
-		/* autoexpenser::fileio::writeToConfig
-			
-			this function writes values to a KVIrc config type file
-		
-			Parameters - writeToConfig(<targetFilename>,<values>,[containerType])
-		
-				$0: targetFilename:string	The filename to write to
-				$1: values:variant		The variable that contains the values to be saved
-				$2: containerType:string	The type of the values variant (optional)
-		
-			If $2 containerType is not specified, the function will attempt to detect what type of container the values are in
-			and act accordingly
-		
-		*/
-		
-		%containerType = $2
-		%success = $false
-		%targetFilename = $0
-		%values = $1
-		
-		if (%targetFilename == $true && %values == $true) 
-		{
-			if (%containerType == $false)
-			{
-				if (@%debug) {debug -c "containerType was not found @%a{msgDebugForgot}";}
-				# no container type passed to us, so we have to try to detect what type of conatiner our values are in
-				%containerType = $typeof(%values)
-				if (%containerType == "hobject")
-				{
-					%containerType = %values->$className()
-				}
-		
-				// dev-note: we can now do a switch/case on %containerType to process the values to save to config
-				// if the containerType is unknown in our switch/case block, we wont save anything to file and output debug error instead
-				switch (%containerType)
-				{
-					case ("array"):
-					{
-						// loop array
-						%success = $true
-						break;
-					}
-					case ("hash"):
-					{
-						// loop hash
-						%success = $true
-						break;
-					}
-					case ("list"):
-					{
-						// iterate list
-						%success = $true
-						break;
-					}
-					default:
-					{
-						// handle unknown containerType
-						if (@%debug) {debug -c "Argument 2 (containerType) didn't exist or is an unknown type. Check the variables passed to this function. @%a{msgDebugProb}";}
-						break;
-					}
-				}
-			}
-		}
-		else
-		{
-			if (@%debug) {debug -c "Required arguments 0 or 1 did not exist. Check the values passed to this function. @%a{msgDebugDef}";}
-		}
-		
-		return %success
-	}
-	
-	function constructor(the constructor of the fileio class)
-	{
-		/* autoexpenser::fileio::constructor
-		
-		*/
-		
-		### class members
-		
-		// inherit values from the parent if it exists, else use default values
-		if (@$parent == $true) 
-		{
-			@%debug	= @$parent()->%debug;
-			@%a		= @$parent()->%a;
-		}
-		else 
-		{
-			@%debug	= $false;
-			@%a		= $false;
-		}
-	}
-	
-}
-
 class("autoexpenser::datatable","tablewidget")
 {
 	function setColumnTitles(sets the column titles using the classes internal column title array)
@@ -899,6 +802,107 @@ class("autoexpenser::datatable","tablewidget")
 		}
 		
 		return %success
+	}
+	
+}
+
+class("autoexpenser::configio","object")
+{
+	function writeToConfig(writes values to KVIrc Config type file)
+	{
+		/* autoexpenser::fileio::writeToConfig
+			
+			this function writes values to a KVIrc config type file
+		
+			Parameters - writeToConfig(<targetFilename>,<values>,[containerType],[sort])
+		
+				$0: targetFilename:string	The filename to write to
+				$1: values:variant		The variable that contains the values to be saved
+				$2: containerType:string	The type of the values variant (optional)
+				$3: sort:boolean		Switch to sort values before they are written to file
+		
+			If $2 containerType is not specified, the function will attempt to detect what type of container the values are in
+			and act accordingly
+			If $3 is $true the function will sort the values before they write to disk if possible.
+		
+		*/
+		
+		%containerType = $2
+		%success = $false
+		%targetFilename = $0
+		%values = $1
+		
+		if (%targetFilename == $true && %values == $true) 
+		{
+			if (%containerType == $false)
+			{
+				if (@%debug) {debug -c "containerType was not found. @%a{msgDebugForgot}";}
+				# no container type passed to us, so we have to try to detect what type of conatiner our values are in
+				%containerType = $typeof(%values)
+				if (%containerType == "hobject")
+				{
+					%containerType = %values->$className()
+				}
+			}
+			debug -c "containerType = %containerType"
+		
+			// dev-note: we can now do a switch/case on %containerType to process the values to save to config
+			// if the containerType is unknown in our switch/case block, we wont save anything to file and output debug error instead
+			switch (%containerType)
+			{
+				case ("array"):
+				{
+					// loop array
+					%success = $true
+					break;
+				}
+				case ("hash"):
+				{
+					// loop hash
+					%success = $true
+					break;
+				}
+				case ("list"):
+				{
+					// iterate list
+					%success = $true
+					break;
+				}
+				default:
+				{
+					// handle unknown containerType
+					if (@%debug) {debug -c "Argument 2 (containerType = %containerType) didn't exist or is an unknown type. Check the variables passed to this function. @%a{msgDebugProb}";}
+					break;
+				}
+			}
+		}
+		else
+		{
+			if (@%debug) {debug -c "Required arguments 0 or 1 did not exist. Check the values passed to this function. @%a{msgDebugDef}";}
+		}
+		
+		return %success
+	}
+	
+	function constructor(the constructor of the configio class)
+	{
+		/* autoexpenser::fileio::constructor
+		
+		*/
+		
+		### class members
+		
+		// inherit values from the parent if it exists, else use default values
+		if (@$parent == $true) 
+		{
+			@%debug	= @$parent()->%debug;
+			@%a		= @$parent()->%a;
+		}
+		else 
+		{
+			@%debug	= $false;
+			@%a		= $false;
+		}
 	}
 	
 }
