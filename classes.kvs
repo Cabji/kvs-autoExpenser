@@ -268,14 +268,18 @@ class("autoexpenser::main","widget")
 		@%s{programVersion}	= "v 0.1"
 		@%s{settingsFile}	= $file.fixpath($file.homedir()".autoExpenser/settings.conf")
 		
-		### variable aliases - these are shortened version of some variable names above to make it easier for development
+		### variable aliases - these are aliases of some variable names above to make it easier for development
 		
 		@%a{pnd} 			= @%s{programNameDev}
+		@%a{msgDebugDef}	= @%s{msgDebugDef}
+		@%a{msgDebugForgot}	= @%s{msgDebugForgot}
+		@%a{msgDebugProb}	= @%s{msgDebugProb}
 		
 		### class variables
 		
 		@%arrBDTKeepColumns			= $array()
 		@%arrBDTKeepColumnsNewNames	= $array()
+		@%arrCSVDataSetNames			= $array()
 		@%debug 					= $true
 		// @%dtblNewData			= declared in main::slotButtonClicked::case ("KeepColumnsContinue")
 		@%intPrevTab				= 0
@@ -688,6 +692,104 @@ class("autoexpenser::main","widget")
 	
 }
 
+class("autoexpenser::fileio","object")
+{
+	function writeToConfig(writes values to KVIrc Config typed file)
+	{
+		/* autoexpenser::fileio::writeToConfig
+			
+			this function writes values to a KVIrc config type file
+		
+			Parameters - writeToConfig(<targetFilename>,<values>,[containerType])
+		
+				$0: targetFilename:string	The filename to write to
+				$1: values:variant		The variable that contains the values to be saved
+				$2: containerType:string	The type of the values variant (optional)
+		
+			If $2 containerType is not specified, the function will attempt to detect what type of container the values are in
+			and act accordingly
+		
+		*/
+		
+		%containerType = $2
+		%success = $false
+		%targetFilename = $0
+		%values = $1
+		
+		if (%targetFilename == $true && %values == $true) 
+		{
+			if (%containerType == $false)
+			{
+				if (@%debug) {debug -c "containerType was not found @%a{msgDebugForgot}";}
+				# no container type passed to us, so we have to try to detect what type of conatiner our values are in
+				%containerType = $typeof(%values)
+				if (%containerType == "hobject")
+				{
+					%containerType = %values->$className()
+				}
+		
+				// dev-note: we can now do a switch/case on %containerType to process the values to save to config
+				// if the containerType is unknown in our switch/case block, we wont save anything to file and output debug error instead
+				switch (%containerType)
+				{
+					case ("array"):
+					{
+						// loop array
+						%success = $true
+						break;
+					}
+					case ("hash"):
+					{
+						// loop hash
+						%success = $true
+						break;
+					}
+					case ("list"):
+					{
+						// iterate list
+						%success = $true
+						break;
+					}
+					default:
+					{
+						// handle unknown containerType
+						if (@%debug) {debug -c "Argument 2 (containerType) didn't exist or is an unknown type. Check the variables passed to this function. @%a{msgDebugProb}";}
+						break;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (@%debug) {debug -c "Required arguments 0 or 1 did not exist. Check the values passed to this function. @%a{msgDebugDef}";}
+		}
+		
+		return %success
+	}
+	
+	function constructor(the constructor of the fileio class)
+	{
+		/* autoexpenser::fileio::constructor
+		
+		*/
+		
+		### class members
+		
+		// inherit values from the parent if it exists, else use default values
+		if (@$parent == $true) 
+		{
+			@%debug	= @$parent()->%debug;
+			@%a		= @$parent()->%a;
+		}
+		else 
+		{
+			@%debug	= $false;
+			@%a		= $false;
+		}
+	}
+	
+}
+
 class("autoexpenser::datatable","tablewidget")
 {
 	function setColumnTitles(sets the column titles using the classes internal column title array)
@@ -725,9 +827,14 @@ class("autoexpenser::datatable","tablewidget")
 	
 	function constructor(runs when the datatable object is created)
 	{
-		/* autoexpenser::datatable
+		/* autoexpenser::datatable::constructor
 		
 		*/
+		
+		### class members
+		
+		// inherit debug value from the parent if it exists, else set debug to false
+		if (@$parent == $true) {@%debug = @$parent()->%debug;} else {@%debug = $false;}
 		
 		@%s{msgDebugDef}	= "This is a definitely a bug. You should report it to the software developer."
 		@%s{msgDebugForgot}	= "If you see this, it means the developer forgot to comment this line."
@@ -788,7 +895,7 @@ class("autoexpenser::datatable","tablewidget")
 		}
 		else
 		{
-			debug -c "Argument 0 (rowData) was not type 'array'. Check your data values. @%s{msgDebugForgot}"
+			if (@%debug) {debug -c "Argument 0 (rowData) was not type 'array'. Check your data values. @%s{msgDebugForgot}";}
 		}
 		
 		return %success
