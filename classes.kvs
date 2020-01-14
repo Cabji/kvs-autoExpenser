@@ -814,23 +814,27 @@ class("autoexpenser::configio","object")
 			
 			this function writes values to a KVIrc config type file
 		
-			Parameters - writeToConfig(<targetFilename>,<values>,[containerType],[sort])
+			Parameters - writeToConfig(<targetFilename>,<values>,[configSection],[containerType],[sort])
 		
 				$0: targetFilename:string	The filename to write to
 				$1: values:variant		The variable that contains the values to be saved
-				$2: containerType:string	The type of the values variant (optional)
-				$3: sort:boolean		Switch to sort values before they are written to file
+				$2: configSection:string	The section in the config file to write to
+				$3: containerType:string	The type of the values variant (optional)
+				$4: sort:boolean		Switch to sort values before they are written to file
 		
-			If $2 containerType is not specified, the function will attempt to detect what type of container the values are in
+			If $2 configSection is specified, the function will write to that section of the config file.
+			If $3 containerType is not specified, the function will attempt to detect what type of container the values are in
 			and act accordingly
-			If $3 is $true the function will sort the values before they write to disk if possible.
+			If $4 is $true the function will sort the values before they write to disk if possible.
 		
 		*/
 		
-		%containerType = $2
-		%success = $false
-		%targetFilename = $0
-		%values = $1
+		%configSection	= $2
+		%containerType	= $3
+		%sort 		= $4
+		%success		= $false
+		%targetFilename	= $0
+		%values		= $1
 		
 		if (%targetFilename == $true && %values == $true) 
 		{
@@ -845,35 +849,44 @@ class("autoexpenser::configio","object")
 				}
 			}
 			debug -c "containerType = %containerType"
-		
-			// dev-note: we can now do a switch/case on %containerType to process the values to save to config
-			// if the containerType is unknown in our switch/case block, we wont save anything to file and output debug error instead
-			switch (%containerType)
+			
+			%cfgID = $config.open(%targetFilename,"w")
+			if (%cfgID == $true)
 			{
-				case ("array"):
+				if (%configSection == $true) {config.setsection %cfgID %configSection;}
+				// dev-note: we can now do a switch/case on %containerType to process the values to save to config
+				// if the containerType is unknown in our switch/case block, we wont save anything to file and output debug error instead
+				switch (%containerType)
 				{
-					// loop array
-					%success = $true
-					break;
+					case ("array"):
+					{
+						// loop array
+						%success = $true
+						break;
+					}
+					case ("hash"):
+					{
+						// loop hash
+						%success = $true
+						break;
+					}
+					case ("list"):
+					{
+						// iterate list
+						%success = $true
+						break;
+					}
+					default:
+					{
+						// handle unknown containerType
+						if (@%debug) {debug -c "Argument 2 (containerType = %containerType) didn't exist or is an unknown type. Check the variables passed to this function. @%a{msgDebugProb}";}
+						break;
+					}
 				}
-				case ("hash"):
-				{
-					// loop hash
-					%success = $true
-					break;
-				}
-				case ("list"):
-				{
-					// iterate list
-					%success = $true
-					break;
-				}
-				default:
-				{
-					// handle unknown containerType
-					if (@%debug) {debug -c "Argument 2 (containerType = %containerType) didn't exist or is an unknown type. Check the variables passed to this function. @%a{msgDebugProb}";}
-					break;
-				}
+			}
+			else
+			{
+				// %targetFilename failed to open
 			}
 		}
 		else
