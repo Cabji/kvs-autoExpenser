@@ -827,6 +827,12 @@ class("autoexpenser::configio","object")
 			and act accordingly
 			If $4 is $true the function will sort the values before they write to disk if possible.
 		
+			Return Value
+				
+				This function will return boolean $false if the values argument type passed to it is not recognized.
+				If the values argument type is recognized, either string "zero" will be returned (if the values argument was empty)
+				or the integer number of values written to the config will be returned.
+		
 		*/
 		
 		%configSection	= $2
@@ -860,20 +866,39 @@ class("autoexpenser::configio","object")
 				{
 					case ("array"):
 					{
+						%success = 0
 						// loop array
-						%success = $true
+						for (%i = 0; %i <= %values[]#; %i++)
+						{
+							config.write %cfgID %i %values[%i]
+							%success++
+						}
+						if (%success == "0") {%success = "zero";}
 						break;
 					}
 					case ("hash"):
 					{
+						%success = 0
 						// loop hash
-						%success = $true
+						foreach (%k, $keys(%values))
+						{
+							config.write %cfgID %k %values{%k}
+							%success++
+						}
+						if (%success == "0") {%success = "zero";}
 						break;
 					}
 					case ("list"):
 					{
+						%success = 0
 						// iterate list
-						%success = $true
+						%values->$moveFirst()
+						while (%values->$moveNext())
+						{
+							config.write %cfgID %success %values->$current()
+							%success++
+						}
+						if (%success == "0") {%success = "zero";}
 						break;
 					}
 					default:
@@ -895,6 +920,34 @@ class("autoexpenser::configio","object")
 		}
 		
 		return %success
+	}
+	
+	function readFromConfig(reads values from KVIrc Config type file)
+	{
+		/* autoexpenser::fileio::readFromConfig
+			
+			this function reads values from a KVIrc config type file
+		
+			Parameters - readFromConfig(<targetFilename>,<values>,[configSection],[containerType],[sort])
+		
+				$0: sourceFilename:string	The filename to read from
+				$1: values:variant		The variable that will hold the values read from file
+				$2: configSection:string	The section in the config file to read from
+				$3: containerType:string	The type of the values variant (optional)
+				$4: sort:boolean		Switch to sort values after they are read from file
+		
+			If $2 configSection is specified, the function will read from that section of the config file.
+			If $3 containerType is not specified, the function will attempt to detect what type of container the values will be in
+			and act accordingly
+			If $4 is $true the function will sort the values after they are read from disk if possible.
+		
+			Return Value
+				
+				This function will return boolean $false if the values argument type passed to it is not recognized.
+				If the values argument type is recognized, either string "zero" will be returned (if the values argument was empty)
+				or the integer number of values read from the config will be returned.
+		
+		*/
 	}
 	
 	function constructor(the constructor of the configio class)
