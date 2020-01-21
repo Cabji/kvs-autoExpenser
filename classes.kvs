@@ -948,6 +948,30 @@ class("autoexpenser::configio","object")
 				or the integer number of values read from the config will be returned.
 		
 		*/
+		
+		%configSection	= $2
+		%containerType	= $3
+		%sort 		= $4
+		%success		= $false
+		%sourceFilename	= $0
+		%values		= $1
+		
+		if (%targetFilename == $true && %values == $true) 
+		{
+			// ensure config file exists
+			if ($file.exists(%sourceFilename))
+			{
+				
+			}
+			else
+			{
+				if (@%debug) {debug -c "Argument 0 sourceFilename: $b()%sourceFilename$b() does not exist. Check folder permissions? @%a{msgDebugProb}";}
+			}
+		}
+		else
+		{
+			if (@%debug) {debug -c "Required arguments 0 or 1 did not exist. Check the values passed to this function. @%a{msgDebugDef}";}
+		}
 	}
 	
 	function constructor(the constructor of the configio class)
