@@ -854,7 +854,6 @@ class("autoexpenser::configio","object")
 					%containerType = %values->$className()
 				}
 			}
-			debug -c "containerType = %containerType"
 			
 			%cfgID = $config.open(%targetFilename,"w")
 			if (%cfgID == $true)
@@ -908,6 +907,7 @@ class("autoexpenser::configio","object")
 						break;
 					}
 				}
+				config.close %cfgID
 			}
 			else
 			{
@@ -932,20 +932,25 @@ class("autoexpenser::configio","object")
 		
 				$0: sourceFilename:string	The filename to read from
 				$1: values:variant		The variable that will hold the values read from file
-				$2: configSection:string	The section in the config file to read from
+				$2: configSection:string	The section in the config file to read from. If this is not set, the entire config will 
+									be read.
 				$3: containerType:string	The type of the values variant (optional)
 				$4: sort:boolean		Switch to sort values after they are read from file
 		
-			If $2 configSection is specified, the function will read from that section of the config file.
+			If $2 configSection is specified, the function will read from that section of the config file, else it will read the entire
+			config.
 			If $3 containerType is not specified, the function will attempt to detect what type of container the values will be in
 			and act accordingly
 			If $4 is $true the function will sort the values after they are read from disk if possible.
 		
 			Return Value
 				
-				This function will return boolean $false if the values argument type passed to it is not recognized.
-				If the values argument type is recognized, either string "zero" will be returned (if the values argument was empty)
-				or the integer number of values read from the config will be returned.
+				This function will return an object of %containerType with values from %sourceFilename. 
+				If %configSection is specified, it will only return values from that section in the %sourceFilename.
+				If %sort is $true, it will sort the values in the returned object if possible.
+				Otherwise it will return $false.
+				Note: to find out how many items were pulled from the config file, you should count the returned object entries 
+				in the calling code.
 		
 		*/
 		
@@ -961,7 +966,100 @@ class("autoexpenser::configio","object")
 			// ensure config file exists
 			if ($file.exists(%sourceFilename))
 			{
-				
+				if (%containerType == $false)
+				{
+					if (@%debug) {debug -c "containerType was not found. @%a{msgDebugForgot}";}
+					# no container type passed, try to detect what type of conatiner the values are in
+					%containerType = $typeof(%values)
+					if (%containerType == "hobject")
+					{
+						%containerType = %values->$className()
+					}
+				}
+				if (%containerType == "list") {%success = $new(list);	}
+		
+				%cfgID = $config.open(%targetFilename,"r")
+				if (%cfgID == $true)
+				{
+					%sections = $config.sectionlist(%cfgID)
+					// loop through entire config, section-by-section. check if user wants a specific section else get all the values
+					foreach (%currentSection, %sections)
+					{
+						if ((%configSection == $false) || (%configSection == $true && %currentSection == %configSection))
+						{
+							%sectionKeys = $config.keylist(%cfgID)
+							if (%sectionKeys == $true)
+							{
+								foreach (%k, %sectionKeys)
+								{
+									%v = $config.read(%cfgID, %k)
+									// dev-note: we can now do a switch/case on %containerType to process the values to read from config
+									// if the containerType is unknown in our switch/case block, we wont read anything from file and output debug error instead
+									switch (%containerType)
+									{
+										case ("array"):
+										{
+											%success[%k] = %v
+											break;
+										}
+										case ("hash"):
+										{	
+											%success{%k} = %v
+											break;
+										}
+										case ("list"):
+										{
+											%success->$append(%v)
+											break;
+										}
+										default:
+										{
+											// handle unknown containerType
+											if (@%debug) {debug -c "Argument 2 (containerType = %containerType) didn't exist or is an unknown type. Check the variables passed to this function. @%a{msgDebugProb}";}
+											break;
+										}
+									} // end switch
+								} // end foreach
+							}
+							else
+							{
+								// no keys were found in this section, so no point entering the inner loops
+							}
+						}
+						else
+						{
+							// if we get here it means that we want a specific section from the config file, but we are 
+							// processing a section that we don't want. nothing really needs to happen here.
+						}
+					}
+					config.close %cfgID
+					if (%sort == $true)
+					{
+						switch(%containerType)
+						{
+							case ("array"):
+							{
+								%success = $sort(%success)
+								break;
+							}
+							case ("list"):
+							{
+								%success->$sort()
+							}
+							default:
+							{
+								// handle unknown containerType for sorting
+								// note: hashes are not sortable afaik
+								if (@%debug) {debug -c "Argument 2 (containerType = %containerType) didn't exist or is an unknown type for sorting purposes. Check the variables passed to this function. @%a{msgDebugProb}";}
+								break;
+							}
+						} // end switch
+					} //end if sort == true
+				}
+				else
+				{
+					// requested config section does not exist in this config file
+				}
 			}
 			else
 			{
@@ -972,6 +1070,8 @@ class("autoexpenser::configio","object")
 		{
 			if (@%debug) {debug -c "Required arguments 0 or 1 did not exist. Check the values passed to this function. @%a{msgDebugDef}";}
 		}
+		
+		return %success
 	}
 	
 	function constructor(the constructor of the configio class)
