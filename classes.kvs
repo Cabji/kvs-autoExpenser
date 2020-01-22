@@ -817,7 +817,7 @@ class("autoexpenser::configio","object")
 			Parameters - writeToConfig(<targetFilename>,<values>,[configSection],[containerType],[sort])
 		
 				$0: targetFilename:string	The filename to write to
-				$1: values:variant		The variable that contains the values to be saved
+				$1: values:variant		The variable that will hold the values to write to file
 				$2: configSection:string	The section in the config file to write to
 				$3: containerType:string	The type of the values variant (optional)
 				$4: sort:boolean		Switch to sort values before they are written to file
@@ -928,20 +928,19 @@ class("autoexpenser::configio","object")
 			
 			this function reads values from a KVIrc config type file
 		
-			Parameters - readFromConfig(<targetFilename>,<values>,[configSection],[containerType],[sort])
+			Parameters - readFromConfig(<sourceFilename>,[configSection],[containerType],[sort])
 		
 				$0: sourceFilename:string	The filename to read from
-				$1: values:variant		The variable that will hold the values read from file
-				$2: configSection:string	The section in the config file to read from. If this is not set, the entire config will 
+				$1: configSection:string	The section in the config file to read from. If this is not set, the entire config will 
 									be read.
-				$3: containerType:string	The type of the values variant (optional)
-				$4: sort:boolean		Switch to sort values after they are read from file
+				$2: containerType:string	The type of the values variant (optional)
+				$3: sort:boolean		Switch to sort values after they are read from file
 		
-			If $2 configSection is specified, the function will read from that section of the config file, else it will read the entire
+			If $1 configSection is specified, the function will read from that section of the config file, else it will read the entire
 			config.
-			If $3 containerType is not specified, the function will attempt to detect what type of container the values will be in
+			If $2 containerType is not specified, the function will attempt to detect what type of container the values will be in
 			and act accordingly
-			If $4 is $true the function will sort the values after they are read from disk if possible.
+			If $3 is $true the function will sort the values after they are read from disk if possible.
 		
 			Return Value
 				
@@ -954,28 +953,17 @@ class("autoexpenser::configio","object")
 		
 		*/
 		
-		%configSection	= $2
-		%containerType	= $3
-		%sort 		= $4
+		%configSection	= $1
+		%containerType	= $2
+		%sort 		= $3
 		%success		= $false
 		%sourceFilename	= $0
-		%values		= $1
 		
-		if (%targetFilename == $true && %values == $true) 
+		if (%targetFilename == $true) 
 		{
 			// ensure config file exists
 			if ($file.exists(%sourceFilename))
 			{
-				if (%containerType == $false)
-				{
-					if (@%debug) {debug -c "containerType was not found. @%a{msgDebugForgot}";}
-					# no container type passed, try to detect what type of conatiner the values are in
-					%containerType = $typeof(%values)
-					if (%containerType == "hobject")
-					{
-						%containerType = %values->$className()
-					}
-				}
 				if (%containerType == "list") {%success = $new(list);	}
 		
 				%cfgID = $config.open(%targetFilename,"r")
