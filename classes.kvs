@@ -928,17 +928,17 @@ class("autoexpenser::configio","object")
 			
 			this function reads values from a KVIrc config type file
 		
-			Parameters - readFromConfig(<sourceFilename>,[configSection],[containerType],[sort])
+			Parameters - readFromConfig(<sourceFilename>,<containerType>,[configSection],[sort])
 		
 				$0: sourceFilename:string	The filename to read from
-				$1: configSection:string	The section in the config file to read from. If this is not set, the entire config will 
+				$1: containerType:string	The type of the values variant (optional)
+				$2: configSection:string	The section in the config file to read from. If this is not set, the entire config will 
 									be read.
-				$2: containerType:string	The type of the values variant (optional)
 				$3: sort:boolean		Switch to sort values after they are read from file
 		
 			If $1 configSection is specified, the function will read from that section of the config file, else it will read the entire
 			config.
-			If $2 containerType is not specified, the function will attempt to detect what type of container the values will be in
+			$2 containerType is not specified, the function will attempt to detect what type of container the values will be in
 			and act accordingly
 			If $3 is $true the function will sort the values after they are read from disk if possible.
 		
@@ -953,25 +953,25 @@ class("autoexpenser::configio","object")
 		
 		*/
 		
-		%configSection	= $1
-		%containerType	= $2
+		%configSection	= $2
+		%containerType	= $1
 		%sort 		= $3
-		%success		= $false
+		%success		= $null
 		%sourceFilename	= $0
 		
-		if (%targetFilename == $true) 
+		if (%sourceFilename == $true && %containerType == $true) 
 		{
 			// ensure config file exists
 			if ($file.exists(%sourceFilename))
 			{
 				if (%containerType == "list") {%success = $new(list);	}
 		
-				%cfgID = $config.open(%targetFilename,"r")
+				%cfgID = $config.open(%sourceFilename,"r")
 				if (%cfgID == $true)
 				{
 					%sections = $config.sectionlist(%cfgID)
 					// loop through entire config, section-by-section. check if user wants a specific section else get all the values
-					foreach (%currentSection, %sections)
+					foreach --all (%currentSection, %sections)
 					{
 						if ((%configSection == $false) || (%configSection == $true && %currentSection == %configSection))
 						{
