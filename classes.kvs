@@ -131,6 +131,41 @@ class("autoexpenser::main","widget")
 				@$bankDataReadFile(%fileIn, %sep, @%cbBankDataFirstLine->$isChecked(), @%bdtBankDataTable)
 				break;
 			}
+			case ("DataSetAdd"):
+			{
+				%strDialogMessage = ""
+				// check that the data set config folder exists, create it if it doesn't exist
+				if ($file.exists(@%s{DataSetsPath}) == $false) {file.mkdir @%s{DataSetsPath};}
+		
+				// show dialog to create a new CSV Data Set
+				dialog.textinput -i=121 -b ("Create a CSV Data Set",%strDialogMsg,"default=OK","escape=Cancel",,@%s{DataSetsPath})
+				{
+					// dialog callback
+					if ($0 == "0" && $1 != $false)
+					{
+						// make a config file for data set named in $1
+						%newDataSetFile = "dataSet-"$1".conf"
+						%strAbsToNewDSFile = $file.fixpath($2"/%newDataSetFile")
+		
+						if ($file.exists(%strAbsToNewDSFile) == $false)
+						{
+							// create the new data set config file
+							%cfgID = $config.open(%strAbsToNewDSFile,"rw")
+							config.close %cfgID
+						}
+						else
+						{
+							// data set file with this name already exists
+							dialog.message -b ("Data Set already exists","There is already a Data Set named <b>$1</b><br/>Data Set names must be unique.",220,"/okay...") {}
+						}
+					}
+					else
+					{
+						// user cancelled the input.
+					}
+				}
+				break;
+			}
 			case ("KeepColumnsContinue"):
 			{
 				// check if user has selected any columns to preserve
@@ -267,6 +302,8 @@ class("autoexpenser::main","widget")
 		@%s{programNameDev}	= "autoExpenser"
 		@%s{programVersion}	= "v 0.1"
 		@%s{settingsFile}	= $file.fixpath($file.homedir()".autoExpenser/settings.conf")
+		@%s{settingsPath}	= $file.fixpath($file.homedir()".autoExpenser")
+		  @%s{dataSetsPath}	= $file.fixpath(@%s{settingsPath}"/dataSets")
 		
 		### variable aliases - these are aliases of some variable names above to make it easier for development
 		
@@ -401,6 +438,11 @@ class("autoexpenser::main","widget")
 		
 		### CSVSets  tab
 		
+		@%btnCSVSetAdd = $new(button, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSet|Button|DataSetAdd")
+		@%btnCSVSetAdd->$setText("➕")
+		@%btnCSVSetAdd->$setTooltip("Add a New CSV Set")
+		@%btnCSVSetAdd->$setMaximumWidth(30)
+		
 		@%lblCSVSetDataSet = $new(label, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSet|Label|DataSet")
 		@%lblCSVSetDataSet->$setText("Data Set: ")
 		
@@ -408,9 +450,14 @@ class("autoexpenser::main","widget")
 		
 		@%dtblCSVSetCategories = $new(autoexpenser::datatable, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSets|DataTable|Categories")
 		
-		@%lPageCSVSet->$addMultiCellWidget(@%lblCSVSetDataSet,		0,0,0,0)
-		@%lPageCSVSet->$addMultiCellWidget(@%coboCSVSetDataSet,		0,0,1,1)
-		@%lPageCSVSet->$addMultiCellWidget(@%dtblCSVSetCategories,		1,1,0,1)
+		@%lPageCSVSet->$addMultiCellWidget(@%btnCSVSetAdd,			0,0,0,0)
+		@%lPageCSVSet->$addMultiCellWidget(@%lblCSVSetDataSet,		0,0,1,1)
+		@%lPageCSVSet->$addMultiCellWidget(@%coboCSVSetDataSet,		0,0,2,2)
+		@%lPageCSVSet->$addMultiCellWidget(@%dtblCSVSetCategories,		1,1,0,2)
+		
+		@%lPageCSVSet->$setColumnStretch(0, 0)
+		@%lPageCSVSet->$setColumnStretch(1, 0)
+		@%lPageCSVSet->$setColumnStretch(2, 1)
 		
 		### Bank data tab
 		
@@ -482,6 +529,8 @@ class("autoexpenser::main","widget")
 		objects.connect @%btnBankDataFile signalDialogFile	$$ slotDialogFile
 		
 		objects.connect @%btnBankDataLoad clicked			$$ slotButtonClicked
+		
+		objects.connect @%btnCSVSetAdd clicked			$$ slotButtonClicked
 		
 		objects.connect @%btnLocalDatabase clicked			$$ browseButtonClicked
 		objects.connect @%btnLocalDatabase signalDialogFile	$$ slotDialogFile
@@ -1067,6 +1116,10 @@ class("autoexpenser::configio","object")
 	function constructor(the constructor of the configio class)
 	{
 		/* autoexpenser::fileio::constructor
+		
+			Notes: 
+			  @%a		is an 'alias' variable, which gives access to values from the parent object.
+			  @%debug 	is a boolean that enables debugging messages.
 		
 		*/
 		
