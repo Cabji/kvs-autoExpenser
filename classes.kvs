@@ -824,7 +824,7 @@ class("autoexpenser::configio","object")
 		
 			If $2 configSection is specified, the function will write to that section of the config file.
 			If $3 containerType is not specified, the function will attempt to detect what type of container the values are in
-			and act accordingly
+			and act accordingly.
 			If $4 is $true the function will sort the values before they write to disk if possible.
 		
 			Return Value
@@ -846,7 +846,7 @@ class("autoexpenser::configio","object")
 		{
 			if (%containerType == $false)
 			{
-				if (@%debug) {debug -c "containerType was not found. @%a{msgDebugForgot}";}
+				//if (@%debug) {debug -c "containerType was not found. @%a{msgDebugForgot}";}
 				# no container type passed to us, so we have to try to detect what type of conatiner our values are in
 				%containerType = $typeof(%values)
 				if (%containerType == "hobject")
@@ -855,7 +855,7 @@ class("autoexpenser::configio","object")
 				}
 			}
 			
-			%cfgID = $config.open(%targetFilename,"w")
+			%cfgID = $config.open(%targetFilename,"rw")
 			if (%cfgID == $true)
 			{
 				if (%configSection == $true) {config.setsection %cfgID %configSection;}
@@ -906,12 +906,12 @@ class("autoexpenser::configio","object")
 						if (@%debug) {debug -c "Argument 2 (containerType = %containerType) didn't exist or is an unknown type. Check the variables passed to this function. @%a{msgDebugProb}";}
 						break;
 					}
-				}
+				} // end switch
 				config.close %cfgID
 			}
 			else
 			{
-				// %targetFilename failed to open
+				if (@%debug) {debug -c "Argument 0: '%targetFilename' failed to open. Check file permissions?. @%a{msgDebugProb}";}
 			}
 		}
 		else
@@ -975,6 +975,7 @@ class("autoexpenser::configio","object")
 					{
 						if ((%configSection == $false) || (%configSection == $true && %currentSection == %configSection))
 						{
+							config.setsection %cfgID %currentSection
 							%sectionKeys = $config.keylist(%cfgID)
 							if (%sectionKeys == $true)
 							{
@@ -1012,6 +1013,7 @@ class("autoexpenser::configio","object")
 							else
 							{
 								// no keys were found in this section, so no point entering the inner loops
+								if (@%debug) {debug -c No keys were found in section: %currentSection;}
 							}
 						}
 						else
@@ -1046,7 +1048,7 @@ class("autoexpenser::configio","object")
 				}
 				else
 				{
-					// requested config section does not exist in this config file
+					if (@%debug) {debug -c "Argument 0 sourceFilename: $b()%sourceFilename$b() could not be opened. Check folder permissions? @%a{msgDebugProb}";}
 				}
 			}
 			else
