@@ -83,7 +83,14 @@ class("autoexpenser::main","widget")
 			%strSetName = @%coboCSVSetDataSet->$current()
 			%strDataSetConfig = @%s{dataSetsPath}"/dataSet-"%strSetName".conf";
 			%hashShopSearch = @%fioConfigs->$readFromConfig(%strDataSetConfig,"hash",ShopSearch,$true)
-			debug -c ShopSearch Keys: $keys(%hashShopSearch)\nShopSearch Values: %hashShopSearch
+			@%dtblCSVSetCategories->$clearTable()
+			@%dtblCSVSetCategories->%columnTitles = $array("Search For", "Shop Name")
+			@%dtblCSVSetCategories->$setColumnTitles()
+			foreach (%search, $keys(%hashShopSearch))
+			{
+				// this fandangled line below sends our hash values into a datatable object as an array so we can use the addRow() function
+				@%dtblCSVSetCategories->$addRow($array(%search,%hashShopSearch{%search}),"editable")
+			}
 		}
 	}
 	
@@ -177,7 +184,7 @@ class("autoexpenser::main","widget")
 					default:		{%sep = ",";}
 				}
 				
-				@$bankDataReadFile(%fileIn, %sep, @%cbBankDataFirstLine->$isChecked(), @%bdtBankDataTable)
+				@$bankDataReadFile(%fileIn, %sep, @%cbBankDataFirstLine->$isChecked(), @%dtblBankDataTable)
 				break;
 			}
 			case ("DataSetAdd"):
@@ -645,7 +652,7 @@ class("autoexpenser::main","widget")
 				$0: filename:string		The filename to read from
 				$1: seperator:string		The seperator character to use on the file data
 				$2: firstRow:bool		Whether the first line in the file has column titles or not
-				$3: target:tablewidget	The tablewidget to put the parsed data into
+				$3: target:datatable		The datatable object to put the parsed data into
 		*/
 		
 		%fileIn = $0
@@ -801,7 +808,7 @@ class("autoexpenser::datatable","tablewidget")
 		/* autoexpenser::datatable::setColumnTitles
 		
 			set the column titles for the tablewidget based on the @%columnTitles array
-			dev-note: note that @%columnTitles is part of the bankdatatable class, not the main class.
+			dev-note: note that @%columnTitles is part of the datatable class, not the main class.
 		
 		*/
 		
@@ -871,17 +878,24 @@ class("autoexpenser::datatable","tablewidget")
 		
 			Adds a row to the datatable object
 		
-			Parameters - addRow(<rowData>)
+			Parameters - addRow(<rowData>,[cellFlag1, cellFlag2, ...])
 		
-				$0: addRow:array		Array that holds the data to insert into the row
+				$0:  addRow:array		Array that holds the data to insert into the row
+				$1-: cellFlag:string		String argument for flag to apply onto cells that are added (see tablewidget 
+									docs for flags)
 		
 		*/
 		
-		%rowData = $0
-		%success = $false
+		%flag				= $1
+		%rowData			= $0
+		%strAcceptedFlags	= "selectable,editable,dragEnabled,dropEnabled,userCheckable,enabled,tristate"
+		%success 			= $false
 		
 		if ($typeOf(%rowData) == "array")
 		{
+			if ($str.contains(%strAcceptedFlags,%flag) == $false) {%flag == "disabled";}
+		debug -c flag = %flag
+		
 			@$setRowCount($(@$rowCount + 1))
 			for (%i = 0; %i < %rowData[]#; %i++)
 			{
@@ -892,7 +906,7 @@ class("autoexpenser::datatable","tablewidget")
 				}
 				// note: %i is the column uid, @%intRowCurrent is the row uid
 				@$setText(@%intRowCurrent,%i,%rowData[%i])
-				@$setItemFlags(@%intRowCurrent, %i, "enabled")
+				@$setItemFlags(@%intRowCurrent, %i, %flag)
 			}
 			@%intRowCurrent++
 			%success = $true
