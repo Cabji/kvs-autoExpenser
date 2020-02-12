@@ -83,13 +83,11 @@ class("autoexpenser::main","widget")
 			%strSetName = @%coboCSVSetDataSet->$current()
 			%strDataSetConfig = @%s{dataSetsPath}"/dataSet-"%strSetName".conf";
 			%hashShopSearch = @%fioConfigs->$readFromConfig(%strDataSetConfig,"hash",ShopSearch,$true)
-			@%dtblCSVSetCategories->$clearTable()
-			@%dtblCSVSetCategories->%columnTitles = $array("Search For", "Shop Name")
-			@%dtblCSVSetCategories->$setColumnTitles()
+			// clear the existing data from the multilineedit
+			@%mleCSVSetKeyValuePairs->$clear()
 			foreach (%search, $keys(%hashShopSearch))
 			{
-				// this fandangled line below sends our hash values into a datatable object as an array so we can use the addRow() function
-				@%dtblCSVSetCategories->$addRow($array(%search,%hashShopSearch{%search}),"editable")
+				@%mleCSVSetKeyValuePairs->$append(%search" => "%hashShopSearch{%search})
 			}
 		}
 	}
@@ -504,12 +502,13 @@ class("autoexpenser::main","widget")
 		
 		@%coboCSVSetDataSet = $new(combobox, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSet|ComboBox|DataSet")
 		
-		@%dtblCSVSetCategories = $new(autoexpenser::datatable, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSets|DataTable|Categories")
+		@%mleCSVSetKeyValuePairs = $new(multilineedit, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSets|MultiLineEdit|KeyValuePairs")
+		@%mleCSVSetKeyValuePairs->$setFamily("Courier")
 		
 		@%lPageCSVSet->$addMultiCellWidget(@%btnCSVSetAdd,			0,0,0,0)
 		@%lPageCSVSet->$addMultiCellWidget(@%lblCSVSetDataSet,		0,0,1,1)
 		@%lPageCSVSet->$addMultiCellWidget(@%coboCSVSetDataSet,		0,0,2,2)
-		@%lPageCSVSet->$addMultiCellWidget(@%dtblCSVSetCategories,		1,1,0,2)
+		@%lPageCSVSet->$addMultiCellWidget(@%mleCSVSetKeyValuePairs,	1,1,0,2)
 		
 		@%lPageCSVSet->$setColumnStretch(0, 0)
 		@%lPageCSVSet->$setColumnStretch(1, 0)
@@ -581,21 +580,21 @@ class("autoexpenser::main","widget")
 		
 		@$addPrivateImpls()
 		
-		objects.connect @%btnBankDataFile clicked			$$ browseButtonClicked
-		objects.connect @%btnBankDataFile signalDialogFile	$$ slotDialogFile
+		objects.connect @%btnBankDataFile	clicked			$$ browseButtonClicked
+		objects.connect @%btnBankDataFile	signalDialogFile	$$ slotDialogFile
 		
-		objects.connect @%btnBankDataLoad clicked			$$ slotButtonClicked
+		objects.connect @%btnBankDataLoad	clicked			$$ slotButtonClicked
 		
-		objects.connect @%btnCSVSetAdd clicked			$$ slotButtonClicked
+		objects.connect @%btnCSVSetAdd		clicked			$$ slotButtonClicked
 		
-		objects.connect @%btnLocalDatabase clicked			$$ browseButtonClicked
-		objects.connect @%btnLocalDatabase signalDialogFile	$$ slotDialogFile
+		objects.connect @%btnLocalDatabase	clicked			$$ browseButtonClicked
+		objects.connect @%btnLocalDatabase	signalDialogFile	$$ slotDialogFile
 		
-		objects.connect @%coboCSVSetDataSet activated		$$ slotUpdateWidgets
+		objects.connect @%coboCSVSetDataSet	activated			$$ slotUpdateWidgets
 		
-		objects.connect @%leLocalDatabase textChanged		$$ settingsCatchChanges
-		objects.connect @%tabwTabs currentChanged			$$ settingsSaveToDisk
-		objects.connect @%tabwTabs currentChanged			$$ slotUpdateWidgets
+		objects.connect @%leLocalDatabase	textChanged		$$ settingsCatchChanges
+		objects.connect @%tabwTabs			currentChanged		$$ settingsSaveToDisk
+		objects.connect @%tabwTabs			currentChanged		$$ slotUpdateWidgets
 		
 		### main run
 		@$show()
