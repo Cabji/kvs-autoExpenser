@@ -53,7 +53,7 @@ class("autoexpenser::main","widget")
 		%signalName	= @$signalName()
 		%signalPrint	= %signalSender::%signalName
 		
-		if (@%debug) {debug -c signalPrint: %signalPrint;}
+		#if (@%debug) {debug -c signalPrint: %signalPrint;}
 		
 		if (%signalPrint == "@%a{pnd}|main|tabwidget::currentChanged")
 		{
@@ -82,13 +82,22 @@ class("autoexpenser::main","widget")
 			// $0 contains the integer value of the item they selected in the combobox
 			%strSetName = @%coboCSVSetDataSet->$current()
 			%strDataSetConfig = @%s{dataSetsPath}"/dataSet-"%strSetName".conf";
-			%hashShopSearch = @%fioConfigs->$readFromConfig(%strDataSetConfig,"hash",ShopSearch,$true)
+			%hashShopSearch = @%fioConfigs->$readFromConfig(%strDataSetConfig,"hash","ShopSearch",$true)
 			// clear the existing data from the multilineedit
 			@%mleCSVSetKeyValuePairs->$clear()
 			foreach (%search, $keys(%hashShopSearch))
 			{
 				@%mleCSVSetKeyValuePairs->$append(%search" => "%hashShopSearch{%search})
 			}
+		}
+		
+		if (%signalPrint == "@%a{pnd}|main|tabwidget|Page|CSVSets|MultiLineEdit|KeyValuePairs::lostFocus")
+		{
+			// when the multilineedit loses keyboard focus, save its content to disk.
+			%hashMLEContent = @%common->$fnLinesToHash(@$signalSender()->$text(),\n," => ")
+			%strOutFile = $file.fixpath(@%s{dataSetsPath}"/dataSet-"@%coboCSVSetDataSet->$current()".conf")
+		debug -c strOutFile: %strOutFile
+			@%fioConfigs->$writeToConfig(%strOutFile,%hashMLEContent,"ShopSearch","hash")
 		}
 	}
 	
@@ -220,6 +229,51 @@ class("autoexpenser::main","widget")
 				}
 				break;
 			}
+			case ("DataSetRename"): 
+			{
+				// rename the selected dataset (dataset name is stored in @%coboCSVSetDataSet->$current())
+				// present dialog to user to alter the current name
+				dialog.textinput -d=@%coboCSVSetDataSet->$current() -i=221 -b ("Rename current CSV set","Alter the name of the current CSV Set...","OK","Cancel",,@%coboCSVSetDataSet)
+				{
+					debug -c \n  0: $0\n  1: $1\n  2: $2;
+					if ($0 == "0")
+					{
+						%strNewName = $1
+						%coboCSVSetObject = $2
+						debug -c %coboCSVSetObject->$name()
+						// dirty check of passed combobox's object name
+						if ($str.contains(%coboCSVSetObject->$name(),"main|tabwidget|Page|CSVSet|ComboBox|DataSet"))
+						{
+							// compare new name against old name, if it's different carry on with renaming else just quit.
+							if (%strNewName != "" && %strNewName != %coboCSVSetObject->$current())
+							{
+							}
+							else
+							{
+								// handle no name OR same name
+								if (%strNewName == "")
+								{
+									dialog.message -b ("Alert","CSV Sets must have a name.",318,"/okay...") {}
+								}
+								else
+								{
+									// user gave us the same name so do nothing? as it doesn't matter.
+								}
+							}
+						}
+						else
+						{
+							// this is not the combobox object you are looking for
+							debug -c The combobox object we expected is not the correct object. We got: %coboCSVSetObject->$name() in the callback. Check data. This debug message needs to be disabled manually because it's in a dialog callback.;
+						}
+					}
+					else
+					{
+						// user cancelled the input.
+					}
+				}
+				break;
+			}
 			case ("KeepColumnsContinue"):
 			{
 				// check if user has selected any columns to preserve
@@ -340,6 +394,31 @@ class("autoexpenser::main","widget")
 		@%s{%settingName} = $0
 	}
 	
+	internal function loadPrivateImpls(loads privateimpls for this class because sometime your are f0rced to use privateimpls to handle events)
+	{
+		/* autoexpenser::main::loadPrivateImpls
+		
+			this function loads required privateimpls
+		
+			Parameters - there are no parameters
+			Return Value - always returns $true
+		
+			This function exists because I found that there are events that the object class has that can't be handled using 
+			objects.connect which is a real shame, as it disjoints the code a fair bit. So this function is an attempt to try 
+			to keep all the privateimpls in one place.
+		
+		*/
+		
+		%success = $true
+		
+		privateimpl (@%mleCSVSetKeyValuePairs, "focusOutEvent")
+		{
+			@$emit("lostFocus");
+		}
+		
+		return %success
+	}
+	
 	function constructor(runs when autoExpenser::main object is created)
 	{
 		/* autoExpenser::main::constructor
@@ -371,6 +450,7 @@ class("autoexpenser::main","widget")
 		@%arrBDTKeepColumns			= $array()
 		@%arrBDTKeepColumnsNewNames	= $array()
 		@%arrCSVDataSetNames			= $array()
+		@%common					= $new(autoexpenser::common, $$, "@%a{pnd}|main|common")
 		@%debug 					= $true
 		@%fioConfigs				= $new(autoexpenser::configio, $$, "@%a{pnd}|main|fioConfigs")
 		// @%dtblNewData			= declared in main::slotButtonClicked::case ("KeepColumnsContinue")
@@ -502,17 +582,32 @@ class("autoexpenser::main","widget")
 		
 		@%coboCSVSetDataSet = $new(combobox, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSet|ComboBox|DataSet")
 		
+		@%btnCSVSetRemove = $new(button, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSet|Button|DataSetRemove")
+		@%btnCSVSetRemove->$setText("➖")
+		@%btnCSVSetRemove->$setTooltip("Remove the selected CSV Set")
+		@%btnCSVSetRemove->$setMaximumWidth(30)
+		
+		@%btnCSVSetRename = $new(button, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSet|Button|DataSetRename")
+		@%btnCSVSetRename->$setText("📛")
+		@%btnCSVSetRename->$setTooltip("Rename the selected CSV Set")
+		@%btnCSVSetRename->$setMaximumWidth(30)
+		
 		@%mleCSVSetKeyValuePairs = $new(multilineedit, @%wgtPageCSVSets, "@%a{pnd}|main|tabwidget|Page|CSVSets|MultiLineEdit|KeyValuePairs")
 		@%mleCSVSetKeyValuePairs->$setFamily("Courier")
+		@%mleCSVSetKeyValuePairs->$setFocusPolicy("StrongFocus")
 		
 		@%lPageCSVSet->$addMultiCellWidget(@%btnCSVSetAdd,			0,0,0,0)
 		@%lPageCSVSet->$addMultiCellWidget(@%lblCSVSetDataSet,		0,0,1,1)
 		@%lPageCSVSet->$addMultiCellWidget(@%coboCSVSetDataSet,		0,0,2,2)
-		@%lPageCSVSet->$addMultiCellWidget(@%mleCSVSetKeyValuePairs,	1,1,0,2)
+		@%lPageCSVSet->$addMultiCellWidget(@%btnCSVSetRename,			0,0,3,3)
+		@%lPageCSVSet->$addMultiCellWidget(@%btnCSVSetRemove,			0,0,4,4)
+		@%lPageCSVSet->$addMultiCellWidget(@%mleCSVSetKeyValuePairs,	1,1,0,4)
 		
 		@%lPageCSVSet->$setColumnStretch(0, 0)
 		@%lPageCSVSet->$setColumnStretch(1, 0)
 		@%lPageCSVSet->$setColumnStretch(2, 1)
+		@%lPageCSVSet->$setColumnStretch(3, 0)
+		@%lPageCSVSet->$setColumnStretch(3, 0)
 		
 		### Bank data tab
 		
@@ -580,24 +675,31 @@ class("autoexpenser::main","widget")
 		
 		@$addPrivateImpls()
 		
-		objects.connect @%btnBankDataFile	clicked			$$ browseButtonClicked
-		objects.connect @%btnBankDataFile	signalDialogFile	$$ slotDialogFile
+		objects.connect @%btnBankDataFile		clicked			$$ browseButtonClicked
+		objects.connect @%btnBankDataFile		signalDialogFile	$$ slotDialogFile
 		
-		objects.connect @%btnBankDataLoad	clicked			$$ slotButtonClicked
+		objects.connect @%btnBankDataLoad		clicked			$$ slotButtonClicked
 		
-		objects.connect @%btnCSVSetAdd		clicked			$$ slotButtonClicked
+		objects.connect @%btnCSVSetAdd			clicked			$$ slotButtonClicked
+		objects.connect @%btnCSVSetRename		clicked			$$ slotButtonClicked
 		
-		objects.connect @%btnLocalDatabase	clicked			$$ browseButtonClicked
-		objects.connect @%btnLocalDatabase	signalDialogFile	$$ slotDialogFile
+		objects.connect @%btnLocalDatabase		clicked			$$ browseButtonClicked
+		objects.connect @%btnLocalDatabase		signalDialogFile	$$ slotDialogFile
 		
-		objects.connect @%coboCSVSetDataSet	activated			$$ slotUpdateWidgets
+		objects.connect @%coboCSVSetDataSet		activated			$$ slotUpdateWidgets
 		
-		objects.connect @%leLocalDatabase	textChanged		$$ settingsCatchChanges
-		objects.connect @%tabwTabs			currentChanged		$$ settingsSaveToDisk
-		objects.connect @%tabwTabs			currentChanged		$$ slotUpdateWidgets
+		objects.connect @%mleCSVSetKeyValuePairs	lostFocus			$$ slotUpdateWidgets
+		objects.connect @%leLocalDatabase		textChanged		$$ settingsCatchChanges
+		
+		objects.connect @%tabwTabs				currentChanged		$$ settingsSaveToDisk
+		objects.connect @%tabwTabs				currentChanged		$$ slotUpdateWidgets
 		
 		### main run
 		@$show()
+		
+		### f0rced privateimpls
+		
+		@$loadPrivateImpls()
 	}
 	
 	function browseButtonClicked(handles a browse button that is used to look for a file)
@@ -1154,7 +1256,7 @@ class("autoexpenser::configio","object")
 							{
 								// handle unknown containerType for sorting
 								// note: hashes are not sortable afaik
-								if (@%debug) {debug -c "Argument 2 (containerType = %containerType) didn't exist or is an unknown type for sorting purposes. Check the variables passed to this function. @%a{msgDebugProb}";}
+								//if (@%debug) {debug -c "Argument 2 (containerType = %containerType) didn't exist or is an unknown type for sorting purposes. Check the variables passed to this function. @%a{msgDebugProb}";}
 								break;
 							}
 						} // end switch
@@ -1181,6 +1283,81 @@ class("autoexpenser::configio","object")
 	function constructor(the constructor of the configio class)
 	{
 		/* autoexpenser::fileio::constructor
+		
+			Notes: 
+			  @%a		is an 'alias' variable, which gives access to values from the parent object.
+			  @%debug 	is a boolean that enables debugging messages.
+		
+		*/
+		
+		### class members
+		
+		// inherit values from the parent if it exists, else use default values
+		if (@$parent == $true) 
+		{
+			@%debug	= @$parent()->%debug;
+			@%a		= @$parent()->%a;
+		}
+		else 
+		{
+			@%debug	= $false;
+			@%a		= $false;
+		}
+	}
+	
+}
+
+class("autoexpenser::common","object")
+{
+	function fnLinesToHash(takes a string and splits it into lines on a delimitor, then splits each line on a seperator and puts the key => value pairs into a hash for return)
+	{
+		/* autoexpenser::common::fnLinesToHash
+		
+			this function takes a string and splits it into lines on a delimitor, then splits each line on a seperator and 
+			puts the key => value pairs into a hash for return
+		
+			Parameters - fnLinesToHash(<strInput>,<lineChar>,<seperator>)
+		
+				$0: strInput:string	The string to analyze
+				$1: lineChar:string		The character or string to delimit a 'line' on. Usually this will be \n or \n\r.
+				$2: seperator:string		The character or string to split a line into key => value pairs. Usually this will be " => ",
+									"|||" or ","
+			All parameters are mandatory.
+		
+			Return Value
+				
+				This function will return a hash containing the key => value pairs found in strInput after processing with 
+				the given criteria. It will return false if the function fails.
+		
+		*/
+		
+		%lineChar	= $1
+		%seperator	= $2
+		%strInput	= $0
+		%success	= $false
+		
+		if (%lineChar != "" && %seperator != "" && %strInput != "")
+		{
+			%success = $hash()
+			%arrLines = $str.split(%lineChar,%strInput,"n")
+			for (%i = 0; %i < %arrLines[]#; %i++)
+			{
+				%arrPairs = $str.split(%seperator,%arrLines[%i],"n",2)
+				%success{%arrPairs[0]} = %arrPairs[1]
+			}
+		}
+		else
+		{
+			// at least one of the arguments were not provided
+			if (@%debug) {debug -c "Required arguments 0, 1 or 2 did not exist. Check the values passed to this function. @%a{msgDebugDef}";}
+		}
+		
+		return %success
+	}
+	
+	function constructor()
+	{
+		/* autoexpenser::common::constructor
 		
 			Notes: 
 			  @%a		is an 'alias' variable, which gives access to values from the parent object.
