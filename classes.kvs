@@ -61,23 +61,29 @@ class("autoexpenser::main","widget")
 			// dev-note: $0 will contain the int value of the current tab we are on
 			if ($0 == "1")
 			{
-				// we are on the Data Set tab (1)
-				// we should update the values in the combobox 
-				@%coboCSVSetDataSet->$clear()
-				%listDataSets = $file.ls(@%s{dataSetsPath}, "fni", "dataSet-*.conf")
-				for (%i = 0; %i < %listDataSets[]#; %i++)
+				// we are on the CSV Set tab (1)
+				// update the values in the combobox if nothing exists in it
+				if (@%coboCSVSetDataSet->$count() == 0)
 				{
-					%listSetNames[%i] = $str.lefttofirst($str.rightfromfirst(%listDataSets[%i],"dataSet-"),".conf")
+					@%coboCSVSetDataSet->$clear()
+						%listDataSets = $file.ls(@%s{dataSetsPath}, "fni", "dataSet-*.conf")
+					for (%i = 0; %i < %listDataSets[]#; %i++)
+					{
+						%listSetNames[%i] = $str.lefttofirst($str.rightfromfirst(%listDataSets[%i],"dataSet-"),".conf")
+					}
+					foreach (%name, %listSetNames)
+					{
+						@%coboCSVSetDataSet->$insertItem(%name)
+					}
+					@%coboCSVSetDataSet->$emit("activated")
 				}
-				foreach (%name, %listSetNames)
-				{
-					@%coboCSVSetDataSet->$insertItem(%name)
-				}
+				// else combobox is already populated
 			}
 		}
 		
 		if (%signalPrint == "@%a{pnd}|main|tabwidget|Page|CSVSet|ComboBox|DataSet::activated")
 		{
+		debug -c comobobox activated handler
 			// the user just picked a data set from the combobox on the data set tab
 			// $0 contains the integer value of the item they selected in the combobox
 			%strSetName = @%coboCSVSetDataSet->$current()
@@ -96,8 +102,8 @@ class("autoexpenser::main","widget")
 			// when the multilineedit loses keyboard focus, save its content to disk.
 			%hashMLEContent = @%common->$fnLinesToHash(@$signalSender()->$text(),\n," => ")
 			%strOutFile = $file.fixpath(@%s{dataSetsPath}"/dataSet-"@%coboCSVSetDataSet->$current()".conf")
-		debug -c strOutFile: %strOutFile
-			@%fioConfigs->$writeToConfig(%strOutFile,%hashMLEContent,"ShopSearch","hash")
+			%overwrite = $true
+			@%fioConfigs->$writeToConfig(%strOutFile,%hashMLEContent,"ShopSearch",%overwrite,"hash")
 		}
 	}
 	
@@ -673,8 +679,6 @@ class("autoexpenser::main","widget")
 		
 		### objects connect
 		
-		@$addPrivateImpls()
-		
 		objects.connect @%btnBankDataFile		clicked			$$ browseButtonClicked
 		objects.connect @%btnBankDataFile		signalDialogFile	$$ slotDialogFile
 		
@@ -753,7 +757,7 @@ class("autoexpenser::main","widget")
 				$0: filename:string		The filename to read from
 				$1: seperator:string		The seperator character to use on the file data
 				$2: firstRow:bool		Whether the first line in the file has column titles or not
-				$3: target:datatable		The datatable object to put the parsed data into
+				$3: target:datatable		The datatable objects to put the parsed data into
 		*/
 		
 		%fileIn = $0
@@ -891,15 +895,6 @@ class("autoexpenser::main","widget")
 		return %success
 	}
 	
-	function addPrivateImpls(adds privateimpls)
-	{
-		/* autoExpenser::main::addPrivateImpls
-		
-			This function is to be used when you are f()rced to use a privateimpl instead of objects.connect to 
-			create a handler for an object.
-		*/
-	}
-	
 }
 
 class("autoexpenser::datatable","tablewidget")
@@ -1035,13 +1030,16 @@ class("autoexpenser::configio","object")
 				$0: targetFilename:string	The filename to write to
 				$1: values:variant		The variable that will hold the values to write to file
 				$2: configSection:string	The section in the config file to write to
-				$3: containerType:string	The type of the values variant (optional)
-				$4: sort:boolean		Switch to sort values before they are written to file
+				$3: overwrite:boolean		The section values will be overwritten instead of appended
+				$4: containerType:string	The type of the values variant (optional)
+				$5: sort:boolean		Switch to sort values before they are written to file
 		
 			If $2 configSection is specified, the function will write to that section of the config file.
-			If $3 containerType is not specified, the function will attempt to detect what type of container the values are in
+			If $3 overwrite is $true, the function will clear the section's current values and only write the values passed to the 
+			section. The default is to append or add the values to the section, or update existing values.
+			If $4 containerType is not specified, the function will attempt to detect what type of container the values are in
 			and act accordingly.
-			If $4 is $true the function will sort the values before they write to disk if possible.
+			If $5 is $true the function will sort the values before they write to disk if possible.
 		
 			Return Value
 				
@@ -1052,8 +1050,9 @@ class("autoexpenser::configio","object")
 		*/
 		
 		%configSection	= $2
-		%containerType	= $3
-		%sort 		= $4
+		%containerType	= $4
+		%overwrite		= $3
+		%sort 		= $5
 		%success		= $false
 		%targetFilename	= $0
 		%values		= $1
@@ -1074,6 +1073,7 @@ class("autoexpenser::configio","object")
 			%cfgID = $config.open(%targetFilename,"rw")
 			if (%cfgID == $true)
 			{
+				if (%overwrite == $true) {config.clearsection %cfgID %configSection;}
 				if (%configSection == $true) {config.setsection %cfgID %configSection;}
 				// dev-note: we can now do a switch/case on %containerType to process the values to save to config
 				// if the containerType is unknown in our switch/case block, we wont save anything to file and output debug error instead
