@@ -49,15 +49,15 @@ class("autoexpenser::main","widget")
 		*/
 		
 		// check the signal sender name first
-		%signalSender	= @$signalSender()->$name()
+		%signalSender	= @$signalSender->$name()
 		%signalName	= @$signalName()
 		%signalPrint	= %signalSender::%signalName
 		
-		#if (@%debug) {debug -c signalPrint: %signalPrint;}
+		if (@%debug) {debug -c signalPrint: %signalPrint;}
 		
 		if (%signalPrint == "@%a{pnd}|main|tabwidget::currentChanged")
 		{
-			// the user just changed the current tab in hte program
+			// this slot deals with when the user just changes the current tab in the program
 			// dev-note: $0 will contain the int value of the current tab we are on
 			if ($0 == "1")
 			{
@@ -77,14 +77,16 @@ class("autoexpenser::main","widget")
 					}
 					@%coboCSVSetDataSet->$emit("activated")
 				}
-				// else combobox is already populated
+				else
+				{
+					// else combobox is already populated
+				}
 			}
 		}
 		
 		if (%signalPrint == "@%a{pnd}|main|tabwidget|Page|CSVSet|ComboBox|DataSet::activated")
 		{
-		debug -c comobobox activated handler
-			// the user just picked a data set from the combobox on the data set tab
+			// this slot deals with when the user just picks a data set from the combobox on the CSV Set tab -> load CSV Set content from disk into multilinedit
 			// $0 contains the integer value of the item they selected in the combobox
 			%strSetName = @%coboCSVSetDataSet->$current()
 			%strDataSetConfig = @%s{dataSetsPath}"/dataSet-"%strSetName".conf";
@@ -99,11 +101,43 @@ class("autoexpenser::main","widget")
 		
 		if (%signalPrint == "@%a{pnd}|main|tabwidget|Page|CSVSets|MultiLineEdit|KeyValuePairs::lostFocus")
 		{
-			// when the multilineedit loses keyboard focus, save its content to disk.
+			// this slot deals with when the multilineedit widget on the CSV Set tab loses keyboard focus -> save its content to disk.
 			%hashMLEContent = @%common->$fnLinesToHash(@$signalSender()->$text(),\n," => ")
 			%strOutFile = $file.fixpath(@%s{dataSetsPath}"/dataSet-"@%coboCSVSetDataSet->$current()".conf")
 			%overwrite = $true
 			@%fioConfigs->$writeToConfig(%strOutFile,%hashMLEContent,"ShopSearch",%overwrite,"hash")
+		}
+		
+		if ($str.match("@%a{pnd}|main|tabwidget|Page|BankData|ArrayKeepColumnsNewNames|*::textChanged",%signalPrint) == $true)
+		{
+			// this slot deals with when the user changes a name of a column to keep on the Bank Data tab -> update values in @%coboSearchCol combobox
+			// dev-note: this slot is called via an emit() in main::slotCheckBoxKeepColumnsToggled()
+			// clear the comobobox contents first
+			@%coboSearchCol->$clear()
+			%n = 0
+		
+			// loop the keepcols array
+			for (%i = 0; %i < @%arrBDTKeepColumns[]#; %i++)
+			{
+				// check if the column is ticked for keeping
+				if (@%arrBDTKeepColumns[%i]->$isChecked() == $true)
+				{
+					if (@%arrBDTKeepColumnsNewNames[%i]->$text() != "")
+					{
+						// add the value from the lineedit to the combobox
+						@%coboSearchCol->$insertItem(@%arrBDTKeepColumnsNewNames[%i]->$text(),%n)
+						%n++
+					}
+					else
+					{
+						// no name entered in the lineedit
+					}
+				}
+				else
+				{
+					// user has not ticked this column for keeping
+				}
+			}
 		}
 	}
 	
@@ -158,7 +192,8 @@ class("autoexpenser::main","widget")
 			Which is a counter of how many columns have been enabled. If this value hits 0 we should disable the Continue button.
 		*/
 		
-		debug -c you toggled checkbox: @$signalSender->$name
+		//debug -c you toggled checkbox: @$signalSender->$name
+		//debug -c this = @$classname()
 		
 		// check the $isChecked() value of the signalSender and adjust the @%intBankDataKeepCount value accordingly
 		if (@$signalSender->$isChecked()) {@%intBankDataKeepCount++;}
@@ -168,7 +203,13 @@ class("autoexpenser::main","widget")
 		if (@%intBankDataKeepCount == 0) {@%btnBankDataContinue->$setEnabled($false);}
 		else {@%btnBankDataContinue->$setEnabled($true);}
 		
-		debug -c KeepCount = @%intBankDataKeepCount
+		// update the @%coboSearchCol combobox widget to show any ticked columns to keep from @%arrBDTKeepColumnsNewNames and @%arrBDTKeepColumns
+		// dev-note: to update @%coboSearchCol we emit a textChanged signal from @%arrBDTKeepColumnsNewNames[%i] and let the slot do the update in 
+		// main::slotUpdateWidgets(); I have hard coded the signal to come from index 0 because we need to use an index value, and there should 
+		// always exist a 0 index if this signal is being emitted here
+		
+		@%arrBDTKeepColumnsNewNames[0]->$emit("textChanged")
+		
 		return $true
 	}
 	
@@ -189,6 +230,7 @@ class("autoexpenser::main","widget")
 			{
 				@%dtblBankDataTable->$clearTable()
 				%fileIn = @%leBankDataFile->$text()
+				// set which seperator character to use
 				switch (@%coboBankDataSepType->$textAt(@%coboBankDataSepType->$currentItem()))
 				{
 					case ("Comma"):	{%sep = ","; break;}
@@ -287,7 +329,7 @@ class("autoexpenser::main","widget")
 				{
 					// @%arrBDTKeepColumns and @%arrBDTKeepColumnsNewNames hold the bool (true = keep, false = forget) and column names to keep
 					// build the widgets and data for the Data Translation tab
-					@%dtblNewData = $new(autoexpenser::bankdatatable, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|bankdatatable|NewData")		
+					@%dtblNewData = $new(autoexpenser::datatable, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|datatable|NewData")		
 					%keepCols = $array()
 					%j = 0
 		
@@ -304,9 +346,11 @@ class("autoexpenser::main","widget")
 					@%dtblNewData->%columnTitles = %keepCols
 					@%dtblNewData->$setColumnTitles()
 		
+					// traverse the data in @%dtblBankDataTable comparing 
+		
 					// remove the placeholder label from the Data Translation tab
 					delete @%lblDataTransHelp
-					// add bdtNewData to Data Translation tab layout
+					// add dtblNewData to Data Translation tab layout
 					@%lPageDataTrans->$addMultiCellWidget(@%dtblNewData,	0,0,0,0)
 					
 					// switch to the Data Translation tab
@@ -315,6 +359,8 @@ class("autoexpenser::main","widget")
 				else
 				{
 					// user has not selected any columns to preserve
+					// this code should never happen as the Continue button is disabled until a column is selected to keep
+					dialog.message -b ("Alert","No columns were selected for preservation.",318,"/okay...") {}
 				}
 				break;
 			}
@@ -407,6 +453,11 @@ class("autoexpenser::main","widget")
 			this function loads required privateimpls
 		
 			Parameters - there are no parameters
+		
+			$0: widget:variant		The widget object to creat ehte privateimpl for
+			$1: eventName:string		The event name to make the privateimpl for
+			$2: signalName:string		The signal name to emit
+		
 			Return Value - always returns $true
 		
 			This function exists because I found that there are events that the object class has that can't be handled using 
@@ -415,11 +466,18 @@ class("autoexpenser::main","widget")
 		
 		*/
 		
+		%widget = $0
+		%eventName = $1
+		%signalName = $2
+		
 		%success = $true
 		
-		privateimpl (@%mleCSVSetKeyValuePairs, "focusOutEvent")
+		if ($typeOf(%widget) == "hobject" && %eventName == $true && %signalName == $true)
 		{
-			@$emit("lostFocus");
+			privateimpl ($0, %eventName)
+			{
+				@$emit("%signalName");
+			}
 		}
 		
 		return %success
@@ -698,12 +756,19 @@ class("autoexpenser::main","widget")
 		objects.connect @%tabwTabs				currentChanged		$$ settingsSaveToDisk
 		objects.connect @%tabwTabs				currentChanged		$$ slotUpdateWidgets
 		
+		/* dev-note: other objects.connect calls may be made elsewhere at runtime. current list of locations: 
+		
+			Function									Widget
+			bankDataReadFile (called from slotButtonClicked)	@%btnBankDataContinue
+			bankDataReadFile							@%arrBDTKeepColumns[%i]
+		*/
+		
 		### main run
 		@$show()
 		
 		### f0rced privateimpls
 		
-		@$loadPrivateImpls()
+		@$loadPrivateImpls(@%mleCSVSetKeyValuePairs, "focusOutEvent", "lostFocus")
 	}
 	
 	function browseButtonClicked(handles a browse button that is used to look for a file)
@@ -745,7 +810,7 @@ class("autoexpenser::main","widget")
 	{
 		/* autoexpenser::main::bankDataReadFile
 		
-			This function parses a file into the bankdatatable object: @%bdtBankDataTable
+			This function parses a file into the bankdatatable object: @%dtblBankDataTable
 			If the function successfully imports data from the file, it will build a set of child widgets
 			for the user to select which data to bring over to the Data Translation tab.
 		
@@ -857,7 +922,7 @@ class("autoexpenser::main","widget")
 			if ($isSet(@%arrBDTKeepColumns)) {@%arrBDTKeepColumns = $array();}
 			if ($isSet(@%arrBDTKeepColumnsNewNames)) {@%arrBDTKeepColumnsNewNames = $array();}
 		
-			debug -c isSet vbox: $isSet(@%vboxKeepColumns)
+		//	debug -c isSet vbox: $isSet(@%vboxKeepColumns)
 		
 			@%vboxKeepColumns 		= $new(vbox, @%wgtPageBankData)
 		
@@ -867,26 +932,33 @@ class("autoexpenser::main","widget")
 		
 			@%hboxKeepColumns 		= $new(hbox, @%vboxKeepColumns)
 			@%hboxKeepColumnsNewNames	= $new(hbox, @%vboxKeepColumns)
-			@%btnBankDataContinue		= $new(button, @%vboxKeepColumns, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|Button|KeepColumnsContinue")
+		
+			@%lblSearchCol = $new(label, @%vboxKeepColumns)
+			@%lblSearchCol->$setText("Search this column for CSV Set matches: ")
+		
+			@%coboSearchCol = $new(combobox, @%vboxKeepColumns, "@%a{pnd}|main|tabwidget|Page|BankData|combobox|SearchCol")
+			
+			@%btnBankDataContinue		= $new(button, @%vboxKeepColumns, "@%a{pnd}|main|tabwidget|Page|BankData|Button|KeepColumnsContinue")
 			@%btnBankDataContinue->$setText("Continue")
 			@%btnBankDataContinue->$setEnabled($false)
 			objects.connect @%btnBankDataContinue clicked $$ slotButtonClicked
 		
-			debug -c columnTitles: @%dtblBankDataTable->%columnTitles
+		//	debug -c columnTitles: @%dtblBankDataTable->%columnTitles
 		
 			for (%i = 0; %i < @%dtblBankDataTable->%columnTitles[]#; %i++)
 			{
 				%colTitle = @%dtblBankDataTable->%columnTitles[%i]
 				// for each columnTitle, we need to make a checkbox
-				@%arrBDTKeepColumns[%i] = $new(checkbox, @%hboxKeepColumns, "@%a{pnd}|main|tabwidget|Page|BankData|bankdatatable|ArrayKeepColumns|%i")
+				@%arrBDTKeepColumns[%i] = $new(checkbox, @%hboxKeepColumns, "@%a{pnd}|main|tabwidget|Page|BankData|ArrayKeepColumns|%i")
 				@%arrBDTKeepColumns[%i]->$setText(%colTitle)
 				@%arrBDTKeepColumns[%i]->$setToolTip("Tick to preserve %colTitle column for Data Translation")
 		
-				@%arrBDTKeepColumnsNewNames[%i] = $new(lineedit, @%hboxKeepColumnsNewNames)
+				@%arrBDTKeepColumnsNewNames[%i] = $new(lineedit, @%hboxKeepColumnsNewNames, "@%a{pnd}|main|tabwidget|Page|BankData|ArrayKeepColumnsNewNames|%i")
 				@%arrBDTKeepColumnsNewNames[%i]->$setText("%colTitle")
 				@%arrBDTKeepColumnsNewNames[%i]->$setToolTip("Enter the name that you want the %colTitle column to be after Data Translation")
 		
-				objects.connect @%arrBDTKeepColumns[%i] toggled $$ slotCheckBoxKeepColumnsToggled
+				objects.connect @%arrBDTKeepColumns[%i] 		toggled		$$ slotCheckBoxKeepColumnsToggled
+				objects.connect @%arrBDTKeepColumnsNewNames[%i] textChanged	$$ slotUpdateWidgets
 			}
 		
 			@%lPageBankData->$addMultiCellWidget(@%vboxKeepColumns, 9,9,0,2)
@@ -974,24 +1046,18 @@ class("autoexpenser::datatable","tablewidget")
 		
 			Adds a row to the datatable object
 		
-			Parameters - addRow(<rowData>,[cellFlag1, cellFlag2, ...])
+			Parameters - addRow(<rowData>)
 		
 				$0:  addRow:array		Array that holds the data to insert into the row
-				$1-: cellFlag:string		String argument for flag to apply onto cells that are added (see tablewidget 
-									docs for flags)
 		
 		*/
 		
-		%flag				= $1
 		%rowData			= $0
 		%strAcceptedFlags	= "selectable,editable,dragEnabled,dropEnabled,userCheckable,enabled,tristate"
 		%success 			= $false
 		
 		if ($typeOf(%rowData) == "array")
 		{
-			if ($str.contains(%strAcceptedFlags,%flag) == $false) {%flag == "disabled";}
-		debug -c flag = %flag
-		
 			@$setRowCount($(@$rowCount + 1))
 			for (%i = 0; %i < %rowData[]#; %i++)
 			{
@@ -1002,7 +1068,6 @@ class("autoexpenser::datatable","tablewidget")
 				}
 				// note: %i is the column uid, @%intRowCurrent is the row uid
 				@$setText(@%intRowCurrent,%i,%rowData[%i])
-				@$setItemFlags(@%intRowCurrent, %i, %flag)
 			}
 			@%intRowCurrent++
 			%success = $true
