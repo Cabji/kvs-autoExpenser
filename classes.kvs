@@ -90,12 +90,12 @@ class("autoexpenser::main","widget")
 			// $0 contains the integer value of the item they selected in the combobox
 			%strSetName = @%coboCSVSetDataSet->$current()
 			%strDataSetConfig = @%s{dataSetsPath}"/dataSet-"%strSetName".conf";
-			%hashShopSearch = @%fioConfigs->$readFromConfig(%strDataSetConfig,"hash","ShopSearch",$true)
+			@%hashShopSearch = @%fioConfigs->$readFromConfig(%strDataSetConfig,"hash","ShopSearch",$true)
 			// clear the existing data from the multilineedit
 			@%mleCSVSetKeyValuePairs->$clear()
-			foreach (%search, $keys(%hashShopSearch))
+			foreach (%search, $keys(@%hashShopSearch))
 			{
-				@%mleCSVSetKeyValuePairs->$append(%search" => "%hashShopSearch{%search})
+				@%mleCSVSetKeyValuePairs->$append(%search" => "@%hashShopSearch{%search})
 			}
 		}
 		
@@ -149,7 +149,7 @@ class("autoexpenser::main","widget")
 		
 		*/
 		
-		if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
+		//if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
 		
 		if ($0)
 		{
@@ -361,10 +361,40 @@ class("autoexpenser::main","widget")
 					@%dtblNewData->%columnTitles = %keepCols
 					@%dtblNewData->$setColumnTitles()
 		
-					// traverse the data in @%dtblBankDataTable comparing 
+					// dev-note: @%dtblBankDataTable is the datatable widget from the Bank Data tab
+					%arrMatchingRows = @%dtblBankDataTable->$searchRow($keys(@%hashShopSearch),@%coboSearchCol->$current())
+		debug -c arrMatchingRows\n\n%arrmatchingRows
+					%c = 0
+					// traverse @%dtblBankDataTable
+					for (%i = 0; %i < @%dtblBankDataTable->$rowCount(); %i++)
+					{
+						// loop the matching rows array
+						foreach (%rowUID, %arrMatchingRows)
+						{
+							// check if the current row in the source table has a search match
+							if (%rowUID == %i)
+							{
+								// loop through the columns in the row
+								for (%n = 0; %n < @%dtblBankDataTable->$columnCount(); %n++)
+								{
+									// loop through the cols we want to preserve in @%arrBDTKeepColumns
+									for (%x = 0; %w < %arrBDTKeepColumns[]#; %x++)
+									{
+										// check if this column should be preserved
+										if (@%arrBDTKeepColumns[%x]->$isChecked() == $true)
+										{
+											// copy the data from the source table into the new table
+											@%dtblNewData->$setText(%i,%c,@%dtblBankDataTable->$text(%i,%n))
+										}
+									}
+								}
+							}
+						}
+					}
 		
-					// remove the placeholder label from the Data Translation tab
-					delete @%lblDataTransHelp
+					// remove the placeholder label from the Data Translation tab if it exists
+					if ($objects.exists(@%lblDataTransHelp) == $true) {delete @%lblDataTransHelp;}
+		
 					// add dtblNewData to Data Translation tab layout
 					@%lPageDataTrans->$addMultiCellWidget(@%dtblNewData,	0,0,0,0)
 					
@@ -404,13 +434,13 @@ class("autoexpenser::main","widget")
 		*/
 		
 		%intNewTab = $0
-		if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
+		//if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
 		
 		switch (@%intPrevTab)
 		{
 			case ("0"):
 			{
-				if (@%debug) {debug -c "came from the Settings tab, so save settings to disk.";}
+		//		if (@%debug) {debug -c "came from the Settings tab, so save settings to disk.";}
 				# save the settings hash to disk
 				%cfg = $config.open(@%s{settingsFile}, rw)
 				if (%cfg)
@@ -481,21 +511,13 @@ class("autoexpenser::main","widget")
 		
 		*/
 		
-		%widget = $0
-		%eventName = $1
-		%signalName = $2
-		
-		%success = $true
-		
-		if ($typeOf(%widget) == "hobject" && %eventName == $true && %signalName == $true)
+		privateimpl (@%mleCSVSetKeyValuePairs, focusOutEvent)
 		{
-			privateimpl ($0, %eventName)
-			{
-				@$emit("%signalName");
-			}
+			@$emit("lostFocus");
 		}
 		
-		return %success
+		
+		return $true
 	}
 	
 	function constructor(runs when autoExpenser::main object is created)
@@ -533,6 +555,7 @@ class("autoexpenser::main","widget")
 		@%debug 					= $true
 		@%fioConfigs				= $new(autoexpenser::configio, $$, "@%a{pnd}|main|fioConfigs")
 		// @%dtblNewData			= declared in main::slotButtonClicked::case ("KeepColumnsContinue")
+		@%hashShopSearch			= $hash()
 		@%intPrevTab				= 0
 		@%intBankDataKeepCount		= 0
 		
@@ -783,7 +806,7 @@ class("autoexpenser::main","widget")
 		
 		### f0rced privateimpls
 		
-		@$loadPrivateImpls(@%mleCSVSetKeyValuePairs, "focusOutEvent", "lostFocus")
+		@$loadPrivateImpls()
 	}
 	
 	function browseButtonClicked(handles a browse button that is used to look for a file)
@@ -998,6 +1021,72 @@ class("autoexpenser::datatable","tablewidget")
 		@$setColumnCount(@%columnTitles[]#)
 		@$setHorizontalHeaderLabels(@%columnTitles)
 		return $true
+	}
+	
+	function searchRow(searches a row for a string)
+	{
+		/* autoexpenser::datatable::searchRow
+			
+			this function searches a row in the datatable for a string (wildcard supported)
+		
+			Parameters - searchRow(<find>,[columnsToSearch])
+		
+				$0: arrFind:csvList/array			Strings to search for. Wildcard characters supported as per $str functions
+				$1: columnsToSearch:csvList/array	Column names to look at during the search (optional)
+		
+			$0 arrFind can be either a comma seperated string or an array
+			$1 columnsToSearch can be either a comma seperated string or an array
+			If $1 columnsToSearch is not supplied, all columns in the row will be searched
+		
+			Return Value
+				
+				This function will return an array that holds the uid integer value of every row that matched the search.
+				If no matches were found in all the rows, this function will return $false.
+		
+		*/
+		
+		%intRows			= @$rowCount()
+		%intCols			= @$columnCount()
+		
+		%columnsToSearch	= $str.split(",",$1)
+		%arrFind 			= $str.split(",",$0)
+		
+		debug -c arrFind = %arrFind
+		
+		%success			= $array()
+		%successCount		= 0
+		
+		// loop through rows in datatable
+		for (%i = 0; %i < %intRows; %i++)
+		{
+			// loop through columns in current row
+			for (%n = 0; %n < %intCols; %n++)
+			{
+				// check if we want to search the current column
+				if (%columnsToSearch == $false || $str.grep(@%columnTitles[%n],%columnsToSearch,"w"))
+				{
+					// check if any of the search terms are in the current cell's text
+					foreach (%s, %arrFind)
+					{
+						if ($str.match(%s,@$text(%i,%n)) == $true)
+						{
+							%success <+ %i
+							break;
+						}
+					}
+				}
+				// check if we found a match in the current column so we can break out of the column traversing loop
+				if (%successCount < %success[]#)
+				{
+					// increment the successCounter first before breaking
+					%successCount++
+					break;
+				}
+			}
+		}
+		
+		if (%successCount == 0) {%success = $false;}
+		return %success
 	}
 	
 	function getColumnTitles(return the column titles as a list object)
