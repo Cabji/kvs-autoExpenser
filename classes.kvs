@@ -328,8 +328,6 @@ class("autoexpenser::main","widget")
 				if (@%intBankDataKeepCount > 0)
 				{
 					// @%arrBDTKeepColumns and @%arrBDTKeepColumnsNewNames hold the bool (true = keep, false = forget) and column names to keep
-					// build the widgets and data for the Data Translation tab
-					@%dtblNewData = $new(autoexpenser::datatable, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|datatable|NewData")		
 					%keepCols = $array()
 					%j = 0
 		
@@ -338,11 +336,28 @@ class("autoexpenser::main","widget")
 					{
 						if (@%arrBDTKeepColumns[%i]->$isChecked())
 						{
-							// we're keeping this column
-							%keepCols[%j] = @%arrBDTKeepColumnsNewNames[%i]->$text()
-							%j++
+							// check if selected column has a name in its lineedit widget
+							if (@%arrBDTKeepColumnsNewNames[%i]->$text() != "")
+							{
+								// we're keeping this column
+								%keepCols[%j] = @%arrBDTKeepColumnsNewNames[%i]->$text()
+								%j++
+							}
+							else
+							{
+								// the user needs to input a name for at least one column, stop show an alert dialog and stop execution here
+								dialog.message -b ("Alert","All columns to be kept must have a name assigned to them.<br/><br/>Check that you have named all columns to keep before continuing.",318,"/okay...",,,@%arrBDTKeepColumnsNewNames[%i])
+								{
+									// dialog callback - $1 contains the culprit widget that got us into here
+									$1->$setFocus()
+								}
+								return $false;
+							}
 						}
 					}
+		
+					// build the widgets and data for the Data Translation tab
+					@%dtblNewData = $new(autoexpenser::datatable, @%wgtPageDataTrans, "@%a{pnd}|main|tabwidget|Page|DataTrans|datatable|NewData")
 					@%dtblNewData->%columnTitles = %keepCols
 					@%dtblNewData->$setColumnTitles()
 		
