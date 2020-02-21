@@ -362,34 +362,46 @@ class("autoexpenser::main","widget")
 					@%dtblNewData->$setColumnTitles()
 		
 					// dev-note: @%dtblBankDataTable is the datatable widget from the Bank Data tab
-					%arrMatchingRows = @%dtblBankDataTable->$searchRow($keys(@%hashShopSearch),@%coboSearchCol->$current())
+		
+					%searchCol = @%coboSearchCol->$current()
+					%arrMatchingRows = @%dtblBankDataTable->$searchRow($keys(@%hashShopSearch),%searchCol)
 		debug -c arrMatchingRows\n\n%arrmatchingRows
-					%c = 0
-					// traverse @%dtblBankDataTable
-					for (%i = 0; %i < @%dtblBankDataTable->$rowCount(); %i++)
+		
+		// this is where the data that populates the Data Translation tab's datatable is built
+		
+					// loop %arrMatchingRows
+					foreach (%intRow, %arrMatchingRows)
 					{
-						// loop the matching rows array
-						foreach (%rowUID, %arrMatchingRows)
+						// loop through the cols we want to preserve, found in @%arrBDTKeepColumns
+						for (%intKeepCol = 0; %intKeepCol < @%arrBDTKeepColumns[]#; %intKeepCol++)
 						{
-							// check if the current row in the source table has a search match
-							if (%rowUID == %i)
+							// check if this column should be preserved
+							if (@%arrBDTKeepColumns[%intKeepCol]->$isChecked() == $true)
 							{
-								// loop through the columns in the row
-								for (%n = 0; %n < @%dtblBankDataTable->$columnCount(); %n++)
+								// check if the current col is the search column
+								if (@%dtblBankDataTable->%columnTitles[%intKeepCol] == %searchCol)
 								{
-									// loop through the cols we want to preserve in @%arrBDTKeepColumns
-									for (%x = 0; %w < %arrBDTKeepColumns[]#; %x++)
+									// replace search matches with Shop Name values
+									foreach (%searchFor, $keys(@%hashShopSearch))
 									{
-										// check if this column should be preserved
-										if (@%arrBDTKeepColumns[%x]->$isChecked() == $true)
+										// find the search term that matches the cell content & replace it with the value from hashShopSearch
+										if ($str.match(%searchFor, @%dtblBankDataTable->$text(%intRow,%intKeepCol)))
 										{
-											// copy the data from the source table into the new table
-											@%dtblNewData->$setText(%i,%c,@%dtblBankDataTable->$text(%i,%n))
+											%arrNewRow <+ @%hashShopSearch{%searchFor}
+											break;
 										}
 									}
 								}
+								else
+								{
+									// else just copy the data directly over from the source table
+									%arrNewRow <+ @%dtblBankDataTable->$text(%intRow,%intKeepCol)
+								}
 							}
 						}
+						@%dtblNewData->$addRow(%arrNewRow)
+						%arrNewRow = $null
+						%arrNewRow = $array()
 					}
 		
 					// remove the placeholder label from the Data Translation tab if it exists
