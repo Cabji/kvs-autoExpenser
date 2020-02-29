@@ -319,7 +319,7 @@ class("autoexpenser::main","widget")
 							dialog.message -b ("Data Set already exists","Data Set named <b>%strNewName</b> already exists.<br/>Data Set names must be unique.",220,"/okay...") {}
 						}
 						// update the values in the data set combobox
-						%objMain->%tabwTabs->$emit("currentChanged")
+						%objMain->%tabwTabs->$emit("currentChanged",1)
 					}
 					else
 					{
