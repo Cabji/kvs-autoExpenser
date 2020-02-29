@@ -332,26 +332,33 @@ class("autoexpenser::main","widget")
 			{
 				// rename the selected dataset (dataset name is stored in @%coboCSVSetDataSet->$current())
 				// present dialog to user to alter the current name
-				dialog.textinput -d=@%coboCSVSetDataSet->$current() -i=221 -b ("Rename current CSV set","Alter the name of the current CSV Set...","OK","Cancel",,@%coboCSVSetDataSet)
+				dialog.textinput -d=@%coboCSVSetDataSet->$current() -i=221 -b ("Rename current CSV set","Alter the name of the current CSV Set...","OK","Cancel",,$$)
 				{
 					debug -c \n  0: $0\n  1: $1\n  2: $2;
 					if ($0 == "0")
 					{
-						%strNewName = $1
-						%coboCSVSetObject = $2
-						debug -c %coboCSVSetObject->$name()
+						%objMain = $2
+						%strNewSetName = $1
+						%strNewSetFileName = "dataSet-"$1".conf"
+						%strOldSetName = %objMain->%coboCSVSetDataSet->$current()
+						%strOldSetFileName = "dataSet-"%strOldSetName".conf"
+		
+						debug -c %objMain->%coboCSVSetDataSet->$name()
 						// dirty check of passed combobox's object name
-						if ($str.contains(%coboCSVSetObject->$name(),"main|tabwidget|Page|CSVSet|ComboBox|DataSet"))
+						if ($str.contains(%objMain->%coboCSVSetDataSet->$name(),"main|tabwidget|Page|CSVSet|ComboBox|DataSet"))
 						{
 							// compare new name against old name, if it's different carry on with renaming else just quit.
-							if (%strNewName != "" && %strNewName != %coboCSVSetObject->$current())
+							if (%strNewSetName != "" && %strNewSetName != %strOldSetName)
 							{
-								// this code is not done yet
+								// rename the file and then emit a tabchanged signal to re-read the csv sets from disk
+								file.rename $file.fixpath(%objMain->%s{DataSetsPath}"/"%strOldSetFileName) $file.fixpath(%objMain->%s{DataSetsPath}"/"%strNewSetFileName)
+								// emit tab changed signal with tab 1 as parameter to update the combobox contents
+								%objMain->%tabwTabs->$emit("currentChanged",1)
 							}
 							else
 							{
 								// handle no name OR same name
-								if (%strNewName == "")
+								if (%strNewSetName == "")
 								{
 									dialog.message -b ("Alert","CSV Sets must have a name.",318,"/okay...") {}
 								}
@@ -364,7 +371,7 @@ class("autoexpenser::main","widget")
 						else
 						{
 							// this is not the combobox object you are looking for
-							debug -c The combobox object we expected is not the correct object. We got: %coboCSVSetObject->$name() in the callback. Check data. This debug message needs to be disabled manually because it's in a dialog callback.;
+							debug -c The combobox object we expected is not the correct object. We got: %objMain->%coboCSVSetDataSet->$name() in the callback. Check data. This debug message needs to be disabled manually because it's in a dialog callback.;
 						}
 					}
 					else
@@ -390,6 +397,7 @@ class("autoexpenser::main","widget")
 					{
 						// deletion confirmed
 						file.remove $file.fixpath(%objMain->%s{dataSetsPath}"/"%strSetFileName)
+						// emit tab changed signal with tab 1 as parameter to update the combobox contents
 						%objMain->%tabwTabs->$emit("currentChanged",1)
 					}
 					else
@@ -881,7 +889,6 @@ class("autoexpenser::main","widget")
 		objects.connect @%mleCSVSetKeyValuePairs	lostFocus			$$ slotUpdateWidgets
 		objects.connect @%leLocalDatabase		textChanged		$$ settingsCatchChanges
 		
-		//objects.connect @%tabwTabs				currentChanged		$$ settingsSaveToDisk
 		objects.connect @%tabwTabs				currentChanged		$$ slotUpdateWidgets
 		
 		/* dev-note: other objects.connect calls may be made elsewhere at runtime. current list of locations: 
