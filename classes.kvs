@@ -57,36 +57,81 @@ class("autoexpenser::main","widget")
 		
 		if (%signalPrint == "@%a{pnd}|main|tabwidget::currentChanged")
 		{
-			// this slot deals with when the user just changes the current tab in the program
+			// this slot deals with when the user changes the current tab or if the program emits the currentChanged 
+			// signal for the autoexpenser::main::%tabwTabs widget
 			// dev-note: $0 will contain the int value of the current tab we are on
-			if ($0 == "1")
+		
+			%intNewTab = $0
+			//if (@%debug) {debug -c \n0 = $0\n1 = $1\nsignalSender = @$signalSender\nsignalSender->name = @$signalSender()->$name()\nsignalName = @$signalName()\nthis->className = @$className;}
+		
+			// first, react to the previous tab value
+			switch (@%intPrevTab)
 			{
-				// we are on the CSV Set tab (1)
-				// update the values in the combobox if nothing exists in it
-				if (@%coboCSVSetDataSet->$count() == 0)
+				case ("0"):
 				{
-					@%coboCSVSetDataSet->$clear()
-						%listDataSets = $file.ls(@%s{dataSetsPath}, "fni", "dataSet-*.conf")
-					for (%i = 0; %i < %listDataSets[]#; %i++)
+					if (@%debug) {debug -c "came from the Settings tab, so save settings to disk.";}
+					# save the settings hash to disk
+					%cfg = $config.open(@%s{settingsFile}, rw)
+					if (%cfg)
 					{
-						%listSetNames[%i] = $str.lefttofirst($str.rightfromfirst(%listDataSets[%i],"dataSet-"),".conf")
+						config.clearsection %cfg settings
+						config.setsection %cfg settings
+						foreach (%key, $keys(@%s))
+						{
+							config.write %cfg %key @%s{%key}
+						}
+						config.close %cfg
 					}
-					foreach (%name, %listSetNames)
+					else
 					{
-						@%coboCSVSetDataSet->$insertItem(%name)
+						dialog.message -b ("Warning", "Could not open the settings file to save settings to disk.<br/>@%s{msgDebugProb}", $icon("warning"), "/okay...")
+						{}
 					}
-					@%coboCSVSetDataSet->$emit("activated")
+					break;
 				}
-				else
+				default:
 				{
-					// else combobox is already populated
+					if (@%debug) {debug -c "we didn't come from a significant tab, so it probably doesn't matter. the tab uid we came from was: @%intPrevTab";}
+					break;
 				}
 			}
+		
+			// now react to the current tab value
+		
+			if (%intNewTab == "1")
+			{
+				// we are on the CSV Set tab (1)
+				// update the data set combobox entries
+		
+				// save the current csv set name
+				%strPrevSetName = @%coboCSVSetDataSet->$current()
+				%c = 0
+		
+				@%coboCSVSetDataSet->$clear()
+				%listDataSets = $file.ls(@%s{dataSetsPath}, "fni", "dataSet-*.conf")
+				for (%i = 0; %i < %listDataSets[]#; %i++)
+				{
+					%listSetNames[%i] = $str.lefttofirst($str.rightfromfirst(%listDataSets[%i],"dataSet-"),".conf")
+				}
+				foreach (%name, %listSetNames)
+				{
+					@%coboCSVSetDataSet->$insertItem(%name)
+					if (%name == %strPrevSetName) {%intPrevSetUID = %c;}
+					%c++
+				}
+				// only set the previous set UID  if we have one
+				if (%intPrevSetUID != $null) {@%coboCSVSetDataSet->$setCurrentItem(%intPrevSetUID);}
+				@%coboCSVSetDataSet->$emit("activated")
+			}
+		
+			// update the previous tab integer
+			@%intPrevTab = %intNewTab
 		}
 		
 		if (%signalPrint == "@%a{pnd}|main|tabwidget|Page|CSVSet|ComboBox|DataSet::activated")
 		{
-			// this slot deals with when the user just picks a data set from the combobox on the CSV Set tab -> load CSV Set content from disk into multilinedit
+			// this slot deals with when the user picks a data set from the combobox on the CSV Set tab
+			// this slot loads the current Data Set content from disk into multilinedit widget
 			// $0 contains the integer value of the item they selected in the combobox
 			%strSetName = @%coboCSVSetDataSet->$current()
 			%strDataSetConfig = @%s{dataSetsPath}"/dataSet-"%strSetName".conf";
@@ -244,19 +289,23 @@ class("autoexpenser::main","widget")
 			}
 			case ("DataSetAdd"):
 			{
-				%strDialogMessage = ""
+				%strDialogMsg = "Enter new CSV Set name..."
 				// check that the data set config folder exists, create it if it doesn't exist
 				if ($file.exists(@%s{DataSetsPath}) == $false) {file.mkdir @%s{DataSetsPath};}
 		
 				// show dialog to create a new CSV Data Set
-				dialog.textinput -i=121 -b ("Create a CSV Data Set",%strDialogMsg,"default=OK","escape=Cancel",,@%s{DataSetsPath})
+				dialog.textinput -i=121 -b ("Create a CSV Data Set",%strDialogMsg,"default=OK","escape=Cancel",,$$)
 				{
 					// dialog callback
+					// $1 has the name that the user input into the dialog
+					// $2 points to the autoexpenser::main object
+					%objMain		= $2
+					%strNewName	= $1
 					if ($0 == "0" && $1 != $false)
 					{
 						// make a config file for data set named in $1
-						%newDataSetFile = "dataSet-"$1".conf"
-						%strAbsToNewDSFile = $file.fixpath($2"/%newDataSetFile")
+						%newDataSetFile = "dataSet-"%strNewName".conf"
+						%strAbsToNewDSFile = $file.fixpath(%objMain->%s{DataSetsPath}"/%newDataSetFile")
 		
 						if ($file.exists(%strAbsToNewDSFile) == $false)
 						{
@@ -267,8 +316,10 @@ class("autoexpenser::main","widget")
 						else
 						{
 							// data set file with this name already exists
-							dialog.message -b ("Data Set already exists","Data Set named <b>$1</b> already exists.<br/>Data Set names must be unique.",220,"/okay...") {}
+							dialog.message -b ("Data Set already exists","Data Set named <b>%strNewName</b> already exists.<br/>Data Set names must be unique.",220,"/okay...") {}
 						}
+						// update the values in the data set combobox
+						%objMain->%tabwTabs->$emit("currentChanged")
 					}
 					else
 					{
@@ -295,6 +346,7 @@ class("autoexpenser::main","widget")
 							// compare new name against old name, if it's different carry on with renaming else just quit.
 							if (%strNewName != "" && %strNewName != %coboCSVSetObject->$current())
 							{
+								// this code is not done yet
 							}
 							else
 							{
@@ -318,6 +370,31 @@ class("autoexpenser::main","widget")
 					else
 					{
 						// user cancelled the input.
+					}
+				}
+				break;
+			}
+			case ("DataSetRemove"): 
+			{
+				// remove the selected dataset (dataset name is stored in @%coboCSVSetDataSet->$current())
+				%strSetName = @%coboCSVSetDataSet->$current()
+				// present dialog to user to confirm the removal of the currently selected combobox item
+				dialog.message -b -i=41 ("Delete current CSV Set","Are you sure you want to delete the <b>%strSetName</b> Data Set?<br/><br/>This action will not be reversible.",44,"Yes","No",,$$,%strSetName)
+				{
+					// dialog callback
+					debug -c 0: $0\n1: $1\n2: $2\n3: $3
+					%objMain = $1
+					%strSetName = $2
+					%strSetFileName = "dataSet-"$2".conf"
+					if ($0 == 0)
+					{
+						// deletion confirmed
+						file.remove $file.fixpath(%objMain->%s{dataSetsPath}"/"%strSetFileName)
+						%objMain->%tabwTabs->$emit("currentChanged",1)
+					}
+					else
+					{
+						// user cancelled the delete action
 					}
 				}
 				break;
@@ -794,6 +871,7 @@ class("autoexpenser::main","widget")
 		
 		objects.connect @%btnCSVSetAdd			clicked			$$ slotButtonClicked
 		objects.connect @%btnCSVSetRename		clicked			$$ slotButtonClicked
+		objects.connect @%btnCSVSetRemove		clicked			$$ slotButtonClicked
 		
 		objects.connect @%btnLocalDatabase		clicked			$$ browseButtonClicked
 		objects.connect @%btnLocalDatabase		signalDialogFile	$$ slotDialogFile
@@ -803,7 +881,7 @@ class("autoexpenser::main","widget")
 		objects.connect @%mleCSVSetKeyValuePairs	lostFocus			$$ slotUpdateWidgets
 		objects.connect @%leLocalDatabase		textChanged		$$ settingsCatchChanges
 		
-		objects.connect @%tabwTabs				currentChanged		$$ settingsSaveToDisk
+		//objects.connect @%tabwTabs				currentChanged		$$ settingsSaveToDisk
 		objects.connect @%tabwTabs				currentChanged		$$ slotUpdateWidgets
 		
 		/* dev-note: other objects.connect calls may be made elsewhere at runtime. current list of locations: 
